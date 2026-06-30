@@ -26,7 +26,7 @@ Confidence: HIGH for counts/geography/victim demographics; MEDIUM for offender
 demographics (identified-suspect subset). Neighborhood labels are approximate
 precinct nicknames for readability, not official boundaries.
 """
-import json, urllib.request, urllib.parse, datetime, collections, os, sys, math
+import json, urllib.request, urllib.parse, datetime, collections, os, sys, math, csv
 
 DOMAIN = "https://data.cityofnewyork.us/resource"
 GEO = "https://data.cityofnewyork.us/api/geospatial"
@@ -103,11 +103,26 @@ def clean_race(v):
     return (v or "").strip().upper() or "UNKNOWN"
 
 
+# Precinct resident population, 2020 Census (P1_001N), via John Keefe's
+# census-by-precincts project. Used for per-100k-resident rates.
+# https://github.com/jkeefe/census-by-precincts
+PRECINCT_POP = {}
+pop_path = os.path.join(DATA, "precinct_pop_2020.csv")
+if os.path.exists(pop_path):
+    for row in csv.DictReader(open(pop_path)):
+        try:
+            PRECINCT_POP[int(row["precinct"])] = int(row["P1_001N"])
+        except (TypeError, ValueError):
+            pass
+# Precincts with too few residents for a meaningful rate (parks, business cores)
+LOW_POP = {p for p, n in PRECINCT_POP.items() if n < 5000}
+
 print("Fetching incidents / victims / offenders...", file=sys.stderr)
 incidents = fetch_all(INCIDENTS, order="occur_date")
 victims = fetch_all(VICTIMS)
 offenders = fetch_all(OFFENDERS)
 print(f"  {len(incidents)} / {len(victims)} / {len(offenders)}", file=sys.stderr)
+print(f"  precinct pop loaded: {len(PRECINCT_POP)} (low-pop excluded from rates: {sorted(LOW_POP)})", file=sys.stderr)
 
 # incident -> year, boro, precinct, fatal
 inc_year, inc_meta = {}, {}
@@ -135,6 +150,11 @@ boro_year = collections.defaultdict(collections.Counter)
 precinct_year = collections.defaultdict(collections.Counter)
 precinct_total = collections.Counter()
 precinct_fatal = collections.Counter()
+# casualties (people shot per incident) — the only available proxy for severity,
+# since the dataset has no shots-fired field
+vpi_dist = collections.Counter()                 # victims-per-incident -> n incidents
+multi_by_year = collections.Counter()            # incidents with 2+ victims, by year
+victims_total_by_year = collections.Counter()    # already have victims_by_year; keep
 points = []
 n_no_geo = 0
 
@@ -165,6 +185,9 @@ for r in incidents:
         by_year_fatal[yr] += 1
     nv = max(1, victims_by_incident.get(key, 1))
     victims_by_year[yr] += nv
+    vpi_dist[min(nv, 5)] += 1               # cap bucket at "5+"
+    if nv >= 2:
+        multi_by_year[yr] += 1
     by_yearmonth[f"{yr:04d}-{mo:02d}"] += 1
     by_month[mo] += 1
     by_dow[dow] += 1
@@ -279,9 +302,11 @@ for p in precinct_total:
     pan_peak = window_avg(p, PAN_PEAK)
     dec_peak = window_avg(p, DECLINE_PEAK)
     dec_recent = window_avg(p, DECLINE_RECENT)
+    pop = PRECINCT_POP.get(p)
+    has_rate = pop and p not in LOW_POP
     prec_changes.append({
         "precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
-        "total": precinct_total[p],
+        "total": precinct_total[p], "pop": pop,
         "share_pre": round(share_pre, 2), "share_post": round(share_post, 2),
         "share_change": round(share_post - share_pre, 2),
         "pandemic_pct": round(100 * (pan_peak - pan_base) / pan_base, 0) if pan_base >= 3 else None,
@@ -289,6 +314,9 @@ for p in precinct_total:
         "decline_pct": round(100 * (dec_recent - dec_peak) / dec_peak, 0) if dec_peak >= 3 else None,
         "pre_avg": round(pre, 1), "post_avg": round(post, 1),
         "peak_avg": round(dec_peak, 1), "recent_avg": round(dec_recent, 1),
+        # annual shootings per 100k residents, recent window (2021-25)
+        "rate_post": round(post / pop * 100000, 1) if has_rate else None,
+        "rate_pre": round(pre / pop * 100000, 1) if has_rate else None,
     })
 
 # ---------- simplified, projected SVG paths for small multiples ----------
@@ -386,8 +414,16 @@ agg = {
     "by_year": [{"year": y, "incidents": by_year[y], "fatal": by_year_fatal.get(y, 0),
                  "victims": victims_by_year.get(y, 0), "victims_fatal": victims_by_year_fatal.get(y, 0),
                  "fatal_rate": round(100 * by_year_fatal.get(y, 0) / by_year[y], 1) if by_year[y] else None,
-                 "night_share": round(100 * night_by_year.get(y, 0) / by_year[y], 1) if by_year[y] else None}
+                 "night_share": round(100 * night_by_year.get(y, 0) / by_year[y], 1) if by_year[y] else None,
+                 "multi_share": round(100 * multi_by_year.get(y, 0) / by_year[y], 1) if by_year[y] else None,
+                 "victims_per_incident": round(victims_by_year.get(y, 0) / by_year[y], 3) if by_year[y] else None}
                 for y in years],
+    "casualties": {
+        "no_shots_fired_field": True,   # dataset has no shots-fired count; victims is the proxy
+        "vpi_dist": [{"victims": v if v < 5 else "5+", "incidents": vpi_dist.get(v, 0)} for v in range(1, 6)],
+        "multi_total": sum(multi_by_year.values()),
+        "city_pop_2020": sum(PRECINCT_POP.values()),
+    },
     "by_month": [{"month": MON[m - 1], "n": by_month.get(m, 0)} for m in range(1, 13)],
     "by_dow": [{"dow": DOW[i], "n": by_dow.get(i, 0)} for i in range(7)],
     "by_hour": [{"hour": h, "n": by_hour.get(h, 0)} for h in range(24)],
@@ -407,6 +443,7 @@ agg = {
     # precinct change analysis + geometry
     "precinct": [{"precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
                   "total": precinct_total[p], "fatal": precinct_fatal[p],
+                  "pop": PRECINCT_POP.get(p), "low_pop": p in LOW_POP,
                   "yr": {str(y): precinct_year[p].get(y, 0) for y in precinct_year[p]}}
                  for p in precinct_total],
     "precinct_changes": prec_changes,

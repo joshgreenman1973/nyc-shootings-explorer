@@ -111,10 +111,10 @@ h2.sec{font-family:"Newsreader",serif;font-weight:500;font-size:clamp(28px,3.8vw
 
 /* charts */
 svg.chart{width:100%;display:block;overflow:visible}
-.axis{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--dim)}
+.axis{font-family:"IBM Plex Mono",monospace;font-size:7.5px;fill:var(--dim)}
 .gridline{stroke:var(--rule)}
-.lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--ink2)}
-.vlabel{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--ink);font-weight:600}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:7.5px;fill:var(--ink2)}
+.vlabel{font-family:"IBM Plex Mono",monospace;font-size:7.5px;fill:var(--ink);font-weight:600}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule)}
@@ -176,18 +176,20 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Pl
   </div>
 </section>
 
-<!-- SMALL MULTIPLES -->
+<!-- HEATMAP MATRIX -->
 <section>
   <div class="wrap reveal">
-    <div class="kh">Every year at a glance</div>
-    <h2 class="sec">Twenty maps, one wall</h2>
-    <div class="sub2">Each small map is a single year, every police precinct shaded by its shooting count on one shared scale. Read left-to-right, top-to-bottom: the mid-2010s lull, the 2020–21 flare, the fade since. No dots — just the city, twenty times.</div>
+    <div class="kh">Every neighborhood, every year</div>
+    <h2 class="sec">The whole city on one grid</h2>
+    <div class="sub2">One row per neighborhood, one column per year, each cell shaded by its shootings. Grouped by borough. Read across a row to follow one place through two decades; read down a column to see a single year citywide. Switch to <b>per 100,000 residents</b> to rank by intensity rather than sheer numbers — which lifts the Bronx and Brownsville to the top.</div>
     <div class="controls" style="margin-top:18px">
       <span class="ctl-label">Shade by</span>
-      <div class="seg" id="seg-sm"><button data-s="count" class="on">Shooting count</button><button data-s="share">Share of city total</button></div>
+      <div class="seg" id="seg-hm"><button data-h="count" class="on">Shooting count</button><button data-h="rate">Per 100k residents</button></div>
+      <span class="ctl-label" style="margin-left:6px">Sort</span>
+      <div class="seg" id="seg-hmsort"><button data-o="boro" class="on">By borough</button><button data-o="value">By recent level</button></div>
     </div>
-    <div class="sm-grid" id="sm-grid"></div>
-    <div class="sm-legend" id="sm-legend"></div>
+    <div id="heatmap" style="margin-top:18px;overflow-x:auto"></div>
+    <div class="sm-legend" id="hm-legend"></div>
   </div>
 </section>
 
@@ -199,7 +201,8 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Pl
     <div class="sub2">Police precincts, labeled by the neighborhood they cover. Three different questions, three different answers — toggle between them.</div>
     <div class="controls" style="margin-top:18px">
       <div class="seg" id="seg-rank">
-        <button data-r="share" class="on">Shift in share of city total</button>
+        <button data-r="rate" class="on">Highest rate per capita</button>
+        <button data-r="share">Shift in share of city total</button>
         <button data-r="spike">Biggest pandemic spikes</button>
         <button data-r="decline">Biggest declines since</button>
       </div>
@@ -221,6 +224,8 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Pl
     <div class="controls" style="margin-top:18px">
       <span class="ctl-label">Show</span>
       <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">Precinct totals</button><button data-mode="points">Individual shootings</button></div>
+      <span class="ctl-label" style="margin-left:6px">Measure</span>
+      <div class="seg" id="seg-percap"><button data-pc="0" class="on">Raw count</button><button data-pc="1">Per 100k residents</button></div>
       <span class="ctl-label" style="margin-left:6px">Fatal only</span>
       <div class="seg" id="seg-fatal"><button data-f="0" class="on">No</button><button data-f="1">Yes</button></div>
     </div>
@@ -250,6 +255,20 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Pl
         <svg class="chart" id="c-osex" viewBox="0 0 360 110"></svg>
         <svg class="chart" id="c-orace" viewBox="0 0 360 180"></svg></div>
     </div>
+  </div>
+</section>
+
+<!-- CASUALTIES -->
+<section>
+  <div class="wrap reveal">
+    <div class="kh">How many at once</div>
+    <h2 class="sec">Most shootings hit one person — but not all</h2>
+    <div class="sub2">The data records no count of <i>shots fired</i>, so the closest measure of an incident's severity is how many people it struck. Most shootings have a single victim; a meaningful minority wound two or more, and that share has crept up.</div>
+    <div class="grid2" style="margin-top:20px">
+      <div class="card"><h3>People shot per incident</h3><div class="cap">all incidents, 2006–2026 · "5+" caps the tail</div><svg class="chart" id="c-vpi" viewBox="0 0 360 200"></svg></div>
+      <div class="card"><h3>Multi-victim share over time</h3><div class="cap">share of shootings that wounded two or more people</div><svg class="chart" id="c-multi" viewBox="0 0 360 200"></svg></div>
+    </div>
+    <div class="note" id="cas-note"></div>
   </div>
 </section>
 
@@ -295,7 +314,7 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Pl
 const fmt=n=>Math.round(n).toLocaleString('en-US');
 const $=s=>document.querySelector(s);
 let A=null,P=null,geo=null,map=null,choLayer=null,ptLayer=null,precIndex={};
-let mstate={mode:'choro',year:0,fatal:0},smMode='count';
+let mstate={mode:'choro',year:0,fatal:0,percap:0},hmMode='count',hmSort='boro';
 const MAP_RAMP=['#efe6d2','#eccf90','#e0a24f','#cf6f35','#a83a23','#6e1414'];
 
 Promise.all([
@@ -319,14 +338,16 @@ function init(){
   $('#f-inc').textContent=fmt(m.n_incidents)+' incidents';$('#f-vic').textContent=fmt(m.n_victims)+' victims';
   $('#f-off').textContent=fmt(m.n_offenders)+' offender records';$('#f-range').textContent=m.date_min+' → '+m.date_max;
 
-  drawArc();drawChangeCards();buildSmallMultiples();drawRankings('share');
+  drawArc();drawChangeCards();buildHeatmap();drawRankings('rate');drawCasualties();
   drawWho();drawHeat();drawMonth();drawDow();buildMap();
 
   seg('#seg-arc','a',v=>{arcA=v;drawArc();});
   seg('#seg-zero','z',v=>{arcZero=+v;drawArc();});
-  seg('#seg-sm','s',v=>{smMode=v;buildSmallMultiples();});
+  seg('#seg-hm','h',v=>{hmMode=v;buildHeatmap();});
+  seg('#seg-hmsort','o',v=>{hmSort=v;buildHeatmap();});
   seg('#seg-rank','r',v=>drawRankings(v));
   seg('#seg-mapmode','mode',v=>{mstate.mode=v;renderMap();});
+  seg('#seg-percap','pc',v=>{mstate.percap=+v;renderMap();});
   seg('#seg-fatal','f',v=>{mstate.fatal=+v;renderMap();});
   $('#yearSlider').oninput=e=>{const y=+e.target.value;mstate.year=(y<=2005?0:y);renderMap();};
   $('#playBtn').onclick=togglePlay;
@@ -420,69 +441,114 @@ function drawChangeCards(){
 }
 function avg(a){return a.reduce((s,x)=>s+x,0)/a.length;}
 
-/* SMALL MULTIPLES */
-function buildSmallMultiples(){
+/* borough from precinct number */
+function boroOf(p){if(p<=34)return 'Manhattan';if(p<=59)return 'Bronx';if(p<=94)return 'Brooklyn';if(p<=119)return 'Queens';return 'Staten Island';}
+const BORO_ORDER=['Manhattan','Bronx','Brooklyn','Queens','Staten Island'];
+const BORO_COL={Manhattan:'#caa24a',Bronx:'#a83a23',Brooklyn:'#8a1e1a',Queens:'#cf6f35','Staten Island':'#1f6f4a'};
+
+/* HEATMAP MATRIX — every neighborhood (row) x every year (col) */
+function buildHeatmap(){
   const yrs=A.meta.years.filter(y=>y<=2025);
-  const paths=A.precinct_paths,vw=A.meta.view_w,vh=A.meta.view_h;
-  // shared scale
-  let maxCount=0,maxShare=0;
-  A.precinct.forEach(p=>{for(const y in p.yr){maxCount=Math.max(maxCount,p.yr[y]);const cy=A.by_year.find(b=>b.year==+y);if(cy&&cy.incidents)maxShare=Math.max(maxShare,p.yr[y]/cy.incidents);}});
-  const max=smMode==='count'?maxCount:maxShare;
-  const cityByYear={};A.by_year.forEach(b=>cityByYear[b.year]=b.incidents);
-  const peakYr=A.by_year.reduce((x,y)=>y.incidents>x.incidents?y:x).year;
-  function col(v){if(v<=0)return 'var(--m0)';const t=Math.pow(v/max,0.6);const i=Math.min(5,Math.floor(t*6));return MAP_RAMP[i];}
-  $('#sm-grid').innerHTML=yrs.map(y=>{
-    const total=cityByYear[y];
-    let svgInner='';
-    A.precinct.forEach(p=>{const d=paths[String(p.precinct)];if(!d)return;
-      const cnt=p.yr[String(y)]||0;const v=smMode==='count'?cnt:(total?cnt/total:0);
-      svgInner+=`<path d="${d}" fill="${col(v)}" stroke="#fff" stroke-width="0.5"/>`;});
-    return `<div class="sm ${y===peakYr?'peak':''}"><svg viewBox="0 0 ${vw} ${vh}">${svgInner}</svg><span class="yr">${y}</span><span class="ct">${fmt(total)}</span></div>`;
-  }).join('');
-  // legend
-  $('#sm-legend').innerHTML='fewer '+MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')+' more'+(smMode==='share'?' · share of that year’s citywide total':' · shootings per precinct');
+  const rate=hmMode==='rate';
+  // value accessor
+  function val(p,y){const c=p.yr[String(y)]||0;if(!rate)return c;if(!p.pop||p.low_pop)return null;return c/p.pop*100000;}
+  // build rows (skip low-pop in rate mode? keep but null cells)
+  let rows=A.precinct.map(p=>({p,boro:boroOf(p.precinct),recent:avg([2023,2024,2025].map(y=>val(p,y)).filter(v=>v!=null))||0}));
+  if(hmSort==='boro')rows.sort((a,b)=>BORO_ORDER.indexOf(a.boro)-BORO_ORDER.indexOf(b.boro)||b.recent-a.recent);
+  else rows.sort((a,b)=>b.recent-a.recent);
+  // shared scale (robust: 98th percentile to avoid one outlier blowing it out)
+  const allv=[];A.precinct.forEach(p=>yrs.forEach(y=>{const v=val(p,y);if(v!=null&&v>0)allv.push(v);}));
+  allv.sort((a,b)=>a-b);const max=allv[Math.floor(allv.length*0.98)]||1;
+  function col(v){if(v==null)return '#e7ded0';if(v<=0)return 'var(--m0)';const t=Math.min(1,Math.pow(v/max,0.62));return MAP_RAMP[Math.min(5,Math.floor(t*6))];}
+  // layout
+  const W=760, labelW=132, yearLabelH=18, rowH=Math.max(11,Math.min(15,(620)/rows.length)), boroW=5, gap=2;
+  const cellW=(W-labelW-boroW)/yrs.length, H=yearLabelH+rows.length*rowH+18;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:680px;display:block;overflow:visible">`;
+  // year headers
+  yrs.forEach((y,i)=>{if(y%2===0||y===yrs[yrs.length-1])s+=`<text x="${labelW+boroW+cellW*i+cellW/2}" y="${yearLabelH-6}" class="axis" text-anchor="middle">'${String(y).slice(2)}</text>`;});
+  let lastBoro='';
+  rows.forEach((row,ri)=>{
+    const y0=yearLabelH+ri*rowH;
+    if(row.boro!==lastBoro){lastBoro=row.boro;
+      s+=`<text x="0" y="${y0+rowH-3}" style="font-family:'IBM Plex Mono',monospace;font-size:8px;fill:${BORO_COL[row.boro]};font-weight:600;letter-spacing:.04em">${row.boro.slice(0,3).toUpperCase()}</text>`;}
+    s+=`<rect x="0" y="${y0}" width="3" height="${rowH-gap}" fill="${BORO_COL[row.boro]}" opacity="0.85"/>`;
+    s+=`<text x="${labelW-6}" y="${y0+rowH/2+2.5}" text-anchor="end" style="font-family:'Spline Sans';font-size:8.5px;fill:var(--ink2)">${row.p.name}</text>`;
+    yrs.forEach((y,ci)=>{const v=val(row.p,y);const x=labelW+boroW+cellW*ci;
+      s+=`<rect x="${x}" y="${y0}" width="${cellW-1}" height="${rowH-gap}" rx="1" fill="${col(v)}"><title>${row.p.name} · ${y}: ${v==null?'—':rate?v.toFixed(1)+'/100k':fmt(v)}</title></rect>`;});
+  });
+  s+='</svg>';
+  $('#heatmap').innerHTML=s;
+  $('#hm-legend').innerHTML='lower '+MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')+' higher · '+(rate?'annual shootings per 100,000 residents (Central Park precinct omitted — too few residents)':'shootings per year');
 }
 
 /* RANKINGS */
 function drawRankings(mode){
-  const pc=A.precinct_changes;const boroOf={};A.precinct.forEach(p=>{});
-  function boroTag(c){return '';}
-  let t1,c1,list1,t2,c2,list2,note;
+  const pc=A.precinct_changes;
+  if(mode==='rate'){
+    const f=pc.filter(c=>c.rate_post!=null);
+    const byRate=f.slice().sort((a,b)=>b.rate_post-a.rate_post);
+    const byCount=pc.slice().sort((a,b)=>b.post_avg-a.post_avg);
+    const maxRate=byRate[0].rate_post,maxCnt=byCount[0].post_avg;
+    renderRank('rank-1','rank-t1','rank-c1','Highest rate per capita','annual shootings per 100k residents · 2021–25',
+      byRate.slice(0,8).map(c=>({name:c.name,prec:c.precinct,frac:c.rate_post/maxRate,disp:c.rate_post.toFixed(0),col:'var(--neg)'})));
+    renderRank('rank-2','rank-t2','rank-c2','Highest by raw count','average shootings per year · 2021–25',
+      byCount.slice(0,8).map(c=>({name:c.name,prec:c.precinct,frac:c.post_avg/maxCnt,disp:c.post_avg.toFixed(0),col:'var(--dim)'})));
+    $('#rank-note').textContent='Per capita tells a different story than raw counts. East New York leads on sheer numbers partly because it is large; adjusted for population, the worst-hit places are smaller, denser precincts in the Bronx and Brownsville. Central Park is omitted — almost no residents.';
+    return;
+  }
   if(mode==='share'){
     const sorted=pc.slice().sort((a,b)=>b.share_change-a.share_change);
-    t1='Gained share of city shootings';c1='2021–25 vs 2015–19 · percentage-point change';
-    list1=sorted.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.share_change,disp:'+'+c.share_change.toFixed(2)+'pp',pos:true}));
-    t2='Lost share of city shootings';c2='2021–25 vs 2015–19 · percentage-point change';
-    list2=sorted.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,v:c.share_change,disp:c.share_change.toFixed(2)+'pp',pos:false}));
-    note='Share of the citywide total — not raw counts. The Bronx (East Tremont, Mott Haven, Wakefield) gained ground as Brooklyn strongholds (East Flatbush, Bed-Stuy) receded, even though shootings fell across nearly all of them.';
-  }else if(mode==='spike'){
-    const f=pc.filter(c=>c.pandemic_pct!=null).sort((a,b)=>b.pandemic_pct-a.pandemic_pct);
-    t1='Sharpest pandemic spikes';c1='2020–21 vs 2018–19 · percent change in shootings';
-    list1=f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.pandemic_pct,disp:'+'+c.pandemic_pct.toFixed(0)+'%',pos:true}));
-    t2='Held steadiest';c2='2020–21 vs 2018–19 · smallest change';
-    list2=f.slice().sort((a,b)=>Math.abs(a.pandemic_pct)-Math.abs(b.pandemic_pct)).slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.pandemic_pct,disp:(c.pandemic_pct>=0?'+':'')+c.pandemic_pct.toFixed(0)+'%',pos:c.pandemic_pct>=0}));
-    note='The 2020–21 surge was not uniform. It hit hardest in pockets of the Bronx, Harlem and the Rockaways, more than doubling shootings in the worst-affected precincts.';
-  }else{
-    const f=pc.filter(c=>c.decline_pct!=null).sort((a,b)=>a.decline_pct-b.decline_pct);
-    t1='Biggest declines since the peak';c1='2023–25 vs 2020–21 · percent change';
-    list1=f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.decline_pct,disp:c.decline_pct.toFixed(0)+'%',pos:false}));
-    t2='Slowest to recover';c2='2023–25 vs 2020–21 · smallest decline';
-    list2=f.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,v:c.decline_pct,disp:c.decline_pct.toFixed(0)+'%',pos:false}));
-    note='Nearly every precinct is down from the 2020–21 peak, but Southeast Queens — Queens Village, St. Albans, Jamaica — saw the fastest turnaround, cutting shootings by roughly two-thirds.';
+    const maxShare=Math.max(...pc.map(c=>Math.max(c.share_pre,c.share_post)));
+    renderDumbbell('rank-1','rank-t1','rank-c1','Gained share of city shootings','share of all NYC shootings: 2015–19 ● → 2021–25 ●',
+      sorted.slice(0,8).map(c=>({name:c.name,prec:c.precinct,pre:c.share_pre,post:c.share_post})),maxShare);
+    renderDumbbell('rank-2','rank-t2','rank-c2','Lost share of city shootings','share of all NYC shootings: 2015–19 ● → 2021–25 ●',
+      sorted.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,pre:c.share_pre,post:c.share_post})),maxShare);
+    $('#rank-note').textContent='These are shares of the citywide total, shown on a common scale so the movements read at true size — every neighborhood sits between roughly 1% and 5% of all shootings, and the shifts are real but small. The center of gravity drifted from Brooklyn (Bed-Stuy, East Flatbush) toward the Bronx (East Tremont, Mott Haven), even as totals fell almost everywhere.';
+    return;
   }
-  renderRank('rank-1','rank-t1','rank-c1',t1,c1,list1);
-  renderRank('rank-2','rank-t2','rank-c2',t2,c2,list2);
-  $('#rank-note').textContent=note;
+  if(mode==='spike'){
+    const f=pc.filter(c=>c.pandemic_pct!=null).sort((a,b)=>b.pandemic_pct-a.pandemic_pct);
+    const max=f[0].pandemic_pct;
+    renderRank('rank-1','rank-t1','rank-c1','Sharpest pandemic spikes','2020–21 vs 2018–19 · change in shootings/yr',
+      f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,frac:c.pandemic_pct/max,disp:'+'+c.pandemic_pct.toFixed(0)+'%',sub:`${c.pre_avg}→${c.peak_avg}/yr`,col:'var(--neg)'})));
+    renderRank('rank-2','rank-t2','rank-c2','Held steadiest','2020–21 vs 2018–19 · smallest change',
+      f.slice().sort((a,b)=>Math.abs(a.pandemic_pct)-Math.abs(b.pandemic_pct)).slice(0,8).map(c=>({name:c.name,prec:c.precinct,frac:Math.abs(c.pandemic_pct)/max,disp:(c.pandemic_pct>=0?'+':'')+c.pandemic_pct.toFixed(0)+'%',sub:`${c.pre_avg}→${c.peak_avg}/yr`,col:'var(--dim)'})));
+    $('#rank-note').textContent='The 2020–21 surge was not uniform. It hit hardest in pockets of the Bronx, Harlem and the Rockaways, more than doubling shootings in the worst-affected precincts, while a few held nearly flat.';
+    return;
+  }
+  // decline
+  const f=pc.filter(c=>c.decline_pct!=null).sort((a,b)=>a.decline_pct-b.decline_pct);
+  const max=Math.max(...f.map(c=>Math.abs(c.decline_pct)));
+  renderRank('rank-1','rank-t1','rank-c1','Biggest declines since the peak','2023–25 vs 2020–21 · change in shootings/yr',
+    f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,frac:Math.abs(c.decline_pct)/max,disp:c.decline_pct.toFixed(0)+'%',sub:`${c.peak_avg}→${c.recent_avg}/yr`,col:'var(--pos)'})));
+  renderRank('rank-2','rank-t2','rank-c2','Slowest to recover','2023–25 vs 2020–21 · smallest decline',
+    f.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,frac:Math.abs(c.decline_pct)/max,disp:c.decline_pct.toFixed(0)+'%',sub:`${c.peak_avg}→${c.recent_avg}/yr`,col:'var(--dim)'})));
+  $('#rank-note').textContent='Nearly every precinct is down from the 2020–21 peak, but Southeast Queens — Queens Village, St. Albans, Jamaica — saw the fastest turnaround, cutting shootings by roughly two-thirds.';
 }
 function renderRank(id,tid,cid,title,cap,list){
   $('#'+tid).textContent=title;$('#'+cid).textContent=cap;
-  const max=Math.max(...list.map(x=>Math.abs(x.v)))||1;
   $('#'+id).innerHTML=list.map((x,i)=>{
-    const w=Math.abs(x.v)/max*100;const col=x.pos?'var(--pos)':'var(--neg)';
+    const w=Math.max(2,x.frac*100);
+    return `<div class="rk"><div class="pos">${i+1}</div>
+      <div class="nm">${x.name}<span>${x.prec}${pctSuffix(x.prec)} pct${x.sub?' · '+x.sub:''}</span></div>
+      <div class="track"><div class="fill" style="width:${w}%;background:${x.col};opacity:.8"></div></div>
+      <div class="vv" style="color:${x.col}">${x.disp}</div></div>`;}).join('');
+}
+function renderDumbbell(id,tid,cid,title,cap,list,maxShare){
+  $('#'+tid).textContent=title;$('#'+cid).textContent=cap;
+  const ax=Math.ceil(maxShare);   // shared axis 0..ax %
+  $('#'+id).innerHTML=list.map((x,i)=>{
+    const xa=x.pre/ax*100,xb=x.post/ax*100,lo=Math.min(xa,xb),hi=Math.max(xa,xb);
+    const up=x.post>=x.pre,col=up?'var(--neg)':'var(--pos)';
     return `<div class="rk"><div class="pos">${i+1}</div>
       <div class="nm">${x.name}<span>${x.prec}${pctSuffix(x.prec)} pct</span></div>
-      <div class="track"><div class="fill" style="width:${w}%;background:${col};opacity:.78"></div></div>
-      <div class="vv" style="color:${col}">${x.disp}</div></div>`;}).join('');
+      <div class="track" style="background:transparent;border-bottom:1px solid var(--rule)">
+        <div style="position:absolute;left:${lo}%;width:${hi-lo}%;top:50%;height:2px;background:${col};opacity:.5"></div>
+        <div style="position:absolute;left:calc(${xa}% - 4px);top:calc(50% - 4px);width:8px;height:8px;border-radius:50%;background:var(--dim)" title="2015–19: ${x.pre}%"></div>
+        <div style="position:absolute;left:calc(${xb}% - 4px);top:calc(50% - 4px);width:8px;height:8px;border-radius:50%;background:${col}" title="2021–25: ${x.post}%"></div>
+      </div>
+      <div class="vv" style="color:${col}">${x.post.toFixed(1)}%</div></div>`;}).join('')+
+      `<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-align:right;margin-top:6px">axis 0–${ax}% of all city shootings</div>`;
 }
 function pctSuffix(p){const s=['th','st','nd','rd'],v=p%100;return s[(v-20)%10]||s[v]||s[0];}
 
@@ -494,6 +560,14 @@ function drawWho(){
   vbars('c-oage',A.offender_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:150,rotate:true,pad:[12,8,34,36],color:()=>'var(--ink2)'});
   vbars('c-osex',A.offender_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:110,horizontal:true,pad:[6,54,6,70],color:()=>'var(--ink2)'});
   vbars('c-orace',A.offender_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:360,H:180,horizontal:true,pad:[6,54,6,118],color:()=>'var(--ink2)'});
+}
+function drawCasualties(){
+  const d=A.casualties.vpi_dist;
+  vbars('c-vpi',d,{val:x=>x.incidents,label:x=>x.victims,fmtVal:fmt,pad:[16,8,28,42],color:(x,i)=>['#d98c3f','#cf6f35','#b0432a','#8a1e1a','#6e1414'][i]});
+  const m=A.by_year.map(y=>({x:y.year,y:y.multi_share}));
+  lineChart('c-multi',[{color:'var(--ox)',fill:true,pts:m}],{W:360,H:200,pad:[16,10,28,40],zero:true,fmtY:v=>v.toFixed(0)+'%',partials:[2026]});
+  const tot=A.casualties.multi_total;
+  $('#cas-note').textContent=`Across two decades, ${fmt(tot)} shootings struck two or more people. The dataset publishes no count of rounds fired, so this — victims per incident — is the only available read on how much firepower an incident involved. The multi-victim share dipped through the 2010s and has risen since the pandemic.`;
 }
 function drawHeat(){
   const s=svg('c-heat');const W=760,H=240,padTop=8,padBot=26,padL=46,padR=14;
@@ -519,27 +593,33 @@ function buildMap(){
   renderMap();
 }
 let choMax=1;
-function precCount(p){if(!p)return 0;if(mstate.year===0)return mstate.fatal?p.fatal:p.total;const yr=(p.yr&&p.yr[String(mstate.year)])||0;if(mstate.fatal){const ratio=p.total?p.fatal/p.total:0;return Math.round(yr*ratio);}return yr;}
-function computeMax(){choMax=Math.max(1,...A.precinct.map(precCount));}
-function choColor(v){if(v===0)return '#f1ebdd';const t=Math.pow(v/choMax,.6);return MAP_RAMP[Math.min(5,Math.floor(t*6))];}
+// raw shooting count for a precinct under current year/fatal state
+function rawCount(p){if(!p)return 0;if(mstate.year===0)return mstate.fatal?p.fatal:p.total;const yr=(p.yr&&p.yr[String(mstate.year)])||0;if(mstate.fatal){const ratio=p.total?p.fatal/p.total:0;return Math.round(yr*ratio);}return yr;}
+// value used to color: count, or per-100k rate
+function precCount(p){if(!p)return 0;const c=rawCount(p);if(!mstate.percap)return c;if(!p.pop||p.low_pop)return null;
+  const denom=mstate.year===0?20:1;   // all-years = cumulative over ~20yrs; single year as-is
+  return c/denom/p.pop*100000;}
+function computeMax(){choMax=Math.max(1,...A.precinct.map(p=>precCount(p)||0));}
+function choColor(v){if(v==null)return '#e7ded0';if(v<=0)return '#f1ebdd';const t=Math.pow(v/choMax,.6);return MAP_RAMP[Math.min(5,Math.floor(t*6))];}
 function choStyle(f){return {fillColor:choColor(precCount(precIndex[String(f.properties.precinct)])),fillOpacity:.82,color:'#fff',weight:.7};}
 function precPopup(f){const p=precIndex[String(f.properties.precinct)];const v=precCount(p);const nm=p?p.name:'';
-  return `<div class="pop"><h4>${f.properties.precinct}${pctSuffix(+f.properties.precinct)} Precinct</h4><div class="meta">${nm}</div>
-    <div class="pr"><span>Shootings (${mstate.year===0?'all years':mstate.year})</span><b>${fmt(v)}</b></div>
-    <div class="pr"><span>All-time total</span><b>${fmt(p?p.total:0)}</b></div>
-    <div class="pr"><span>All-time fatal</span><b>${fmt(p?p.fatal:0)}</b></div></div>`;}
+  const rateLine=p&&p.pop&&!p.low_pop?`<div class="pr"><span>Per 100k residents (${mstate.year===0?'/yr, all-time avg':mstate.year})</span><b>${v==null?'—':(mstate.percap?v.toFixed(1):(rawCount(p)/(mstate.year===0?20:1)/p.pop*100000).toFixed(1))}</b></div>`:'';
+  return `<div class="pop"><h4>${f.properties.precinct}${pctSuffix(+f.properties.precinct)} Precinct</h4><div class="meta">${nm}${p&&p.pop?' · '+fmt(p.pop)+' residents':''}</div>
+    <div class="pr"><span>Shootings (${mstate.year===0?'all years':mstate.year})</span><b>${fmt(rawCount(p))}</b></div>
+    ${rateLine}
+    <div class="pr"><span>All-time total</span><b>${fmt(p?p.total:0)}</b></div></div>`;}
 function renderMap(){
   $('#yLabel').textContent=mstate.year===0?'All years':mstate.year;
   if(mstate.mode==='choro'){if(map.hasLayer(ptLayer))map.removeLayer(ptLayer);computeMax();if(!map.hasLayer(choLayer))choLayer.addTo(map);choLayer.setStyle(choStyle);legendCho();
-    let tot=0;A.precinct.forEach(p=>tot+=precCount(p));$('#yCount').textContent=fmt(tot)+(mstate.fatal?' fatal':'')+' shootings';
-    $('#mapNote').textContent='Precinct totals are raw counts, not population-adjusted. 2026 covers January–March only.';}
+    let tot=0;A.precinct.forEach(p=>tot+=rawCount(p));$('#yCount').textContent=fmt(tot)+(mstate.fatal?' fatal':'')+' shootings';
+    $('#mapNote').textContent=mstate.percap?'Shaded by shootings per 100,000 residents (2020 Census, via John Keefe’s census-by-precincts). Central Park precinct is left blank — too few residents for a rate.':'Precinct totals are raw counts, not population-adjusted. 2026 covers January–March only.';}
   else{if(map.hasLayer(choLayer))map.removeLayer(choLayer);renderPoints();if(!map.hasLayer(ptLayer))ptLayer.addTo(map);legendPts();
     $('#mapNote').textContent='Each dot is one shooting incident'+(mstate.year?` in ${mstate.year}`:'')+'.';}
 }
 function renderPoints(){ptLayer.clearLayers();let n=0;P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;n++;
   L.circleMarker([lat,lon],{radius:fatal?3.2:2.1,stroke:false,fillColor:fatal?'#6e1414':'#cf6f35',fillOpacity:fatal?.85:.5,renderer:map.getRenderer(ptLayer)}).addTo(ptLayer);});
   $('#yCount').textContent=fmt(n)+(mstate.fatal?' fatal':'')+' shootings shown';}
-function legendCho(){const e=document.getElementById('legend');if(!e)return;e.innerHTML=`<b>Shootings${mstate.fatal?' (fatal)':''}${mstate.year?' · '+mstate.year:''}</b><div class="scale">${MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div><div class="ticks"><span>0</span><span>${fmt(choMax)}</span></div>`;}
+function legendCho(){const e=document.getElementById('legend');if(!e)return;const unit=mstate.percap?'per 100k':'count';const hi=mstate.percap?choMax.toFixed(0):fmt(choMax);e.innerHTML=`<b>Shootings · ${unit}${mstate.fatal?' · fatal':''}${mstate.year?' · '+mstate.year:''}</b><div class="scale">${MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div><div class="ticks"><span>0</span><span>${hi}</span></div>`;}
 function legendPts(){const e=document.getElementById('legend');if(!e)return;e.innerHTML=`<b>Each dot = 1 shooting</b><div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#cf6f35;display:inline-block"></span>Nonfatal</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="width:9px;height:9px;border-radius:50%;background:#6e1414;display:inline-block"></span>Fatal</div>`;}
 let playTimer=null;
 function togglePlay(){if(playTimer){clearInterval(playTimer);playTimer=null;$('#playBtn').textContent='▶';return;}
