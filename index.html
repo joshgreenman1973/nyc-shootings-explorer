@@ -184,29 +184,31 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
   <div class="wrap reveal">
     <div class="kh">The toll of the decline</div>
     <h2 class="sec">Had 2006 levels simply held, thousands more would have been shot</h2>
-    <div class="sub2">A counting exercise, not a model: take 2006's tally — <b id="cf-base"></b> people shot — and hold it flat through 2025. Compare that flat line to what actually happened. The gap is the human dividend of two decades of decline (and the cost of the pandemic years, where the real line rose above 2006).</div>
-    <div style="display:grid;grid-template-columns:0.85fr 1.15fr;gap:1px;background:var(--hair);border:1px solid var(--hair);border-top:2px solid var(--ink);margin-top:20px">
-      <div class="card" style="border-top:0;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--red);font-weight:700">Fewer people shot, 2007–2025</div>
-        <div id="cf-number" style="font-family:'Archivo';font-weight:900;font-size:clamp(60px,11vw,128px);letter-spacing:-.05em;line-height:.85;margin:10px 0;font-variant-numeric:tabular-nums"></div>
-        <div id="cf-sub" style="font-size:14px;color:var(--ink2);max-width:34ch"></div>
+    <div class="sub2">A counting exercise, not a model: take 2006's tally — <b id="cf-base"></b> people shot — and hold it flat through 2025. Compared with what actually happened, the gap is the human dividend of two decades of decline (and the cost of the pandemic years, where the real line rose back above 2006).</div>
+    <div style="display:grid;grid-template-columns:0.8fr 1.2fr;gap:36px;align-items:center;margin-top:24px">
+      <div>
+        <div style="font-family:var(--sans);font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--red);font-weight:600">Fewer people shot, 2007–2025</div>
+        <div id="cf-number" style="font-family:var(--serif);font-weight:500;font-size:clamp(52px,8vw,88px);letter-spacing:-.02em;line-height:.95;margin:6px 0 12px;font-variant-numeric:tabular-nums"></div>
+        <div id="cf-sub" style="font-family:var(--serif);font-size:16px;color:var(--ink2);max-width:32ch;line-height:1.45"></div>
       </div>
-      <div class="card" style="border-top:0"><svg class="chart" id="c-cf" viewBox="0 0 480 300"></svg><div id="cf-leg" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink2);margin-top:6px"></div></div>
+      <div><svg class="chart" id="c-cf" viewBox="0 0 480 300"></svg><div id="cf-leg" style="font-family:var(--sans);font-size:12px;color:var(--ink2);margin-top:8px"></div></div>
     </div>
   </div>
 </section>
 
-<!-- DIVERGENCE: shootings vs assault -->
+<!-- SHOOTINGS WITHIN SERIOUS VIOLENCE -->
 <section class="numbered">
   <div class="wrap reveal">
-    <div class="kh">Two crimes, two directions</div>
-    <h2 class="sec">As shootings fell, felony assault climbed</h2>
-    <div class="sub2">Gun violence is not "crime" in general. Indexed to their 2006 levels, shootings and felony assaults pull apart: shootings dropped well below their starting point while reported felony assaults rose steadily above it. Press play to watch the two tracks separate year by year.</div>
+    <div class="kh">Gun violence within serious violence</div>
+    <h2 class="sec">A shrinking share of serious violence involves a gun</h2>
+    <div class="sub2">A clarification first: <b>shootings are not a standalone crime category.</b> In the NYPD's seven "major felonies," a shooting is usually folded into one of two buckets — a victim who survives is generally recorded as a <b>felony assault</b>, one who dies as a <b>murder</b>. So shootings are best read as the gun-injury slice of serious violence, not a separate crime running parallel to it. That is why the two are charted at their true, very different scales below — felony assault is an order of magnitude larger — rather than on a shared line. The telling number is the relationship between them: for every 100 felony assaults in 2006 there were about <b id="gs-a"></b> shootings; by 2025, about <b id="gs-b"></b>.</div>
     <div class="controls" style="margin-top:18px">
-      <button class="playbtn" id="divPlay" style="width:auto;padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:12px;gap:8px">▶ Play</button>
+      <button class="playbtn" id="divPlay" style="width:auto;padding:0 14px;font-family:var(--sans);font-size:13px;font-weight:600">▶ Play</button>
       <span class="ctl-label" id="div-readout"></span>
     </div>
-    <div class="card full"><svg class="chart" id="c-div" viewBox="0 0 760 340"></svg><div id="div-leg" style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--ink2);margin-top:6px"></div></div>
+    <svg class="chart" id="c-div" viewBox="0 0 760 420" style="margin-top:6px"></svg>
+    <div id="div-leg" style="font-family:var(--sans);font-size:13px;color:var(--ink2);margin-top:10px"></div>
+    <div class="note">Felony-assault counts are all felony assaults citywide (NYPD complaint data, dated by report date), the great majority of which do not involve a gun. The "shootings per 100 felony assaults" ratio is a rough index of how gun-driven serious violence is — not a clean subset share, since the ~16% of shootings that are fatal are counted as murders, not assaults.</div>
   </div>
 </section>
 
@@ -529,36 +531,46 @@ function drawCounterfactual(){
   $('#cf-leg').innerHTML='<span style="color:var(--red)">●</span> people actually shot &nbsp;&nbsp; <span style="color:var(--ink2)">– –</span> if 2006 had held &nbsp;&nbsp; <span style="color:var(--steel)">▰</span> the gap';
 }
 
-/* divergence: shootings vs felony assault, indexed to 2006=100, animated */
-let divCut=null;
+/* shootings within serious violence: two stacked panels at TRUE scale
+   (felony assault, then shootings) so magnitudes are honest — not a shared line */
 function drawDivergence(cut){
   const sh=A.by_year.filter(y=>y.year<=2025), as=A.assault_by_year.filter(y=>y.year<=2025);
-  const sh0=sh[0].incidents, as0=as[0].n;
-  const shPts=sh.map(y=>({x:y.year,y:100*y.incidents/sh0}));
-  const asPts=as.map(y=>({x:y.year,y:100*y.n/as0}));
   const lim=cut||2025;
-  const shc=shPts.filter(p=>p.x<=lim), asc=asPts.filter(p=>p.x<=lim);
-  const {X,Y}=lineChart('c-div',[
-    {color:'var(--steel)',w:2.6,pts:asc},
-    {color:'var(--red)',w:2.8,pts:shc}
-  ],{H:340,zero:true,fmtY:v=>v.toFixed(0),partials:[],markers:true});
-  const s=document.getElementById('c-div');
-  // rotated y-axis title — make the INDEX explicit so it can't read as raw counts
-  const yt=el('text',{x:12,y:170,class:'axis','text-anchor':'middle',transform:'rotate(-90 12 170)'},s);
-  yt.textContent='INDEX · 2006 = 100';yt.setAttribute('fill','var(--ink2)');
-  // direct end-of-line labels
-  const lastSh=shPts.find(p=>p.x===lim),lastAs=asPts.find(p=>p.x===lim);
-  el('text',{x:X(lim)+6,y:Y(lastAs.y)+3,class:'vlabel'},s).textContent=`assault ${lastAs.y.toFixed(0)}`;
-  el('text',{x:X(lim)+6,y:Y(lastSh.y)+3,class:'vlabel'},s).textContent=`shootings ${lastSh.y.toFixed(0)}`;
-  $('#div-readout').textContent=`${lim} · shootings ${lastSh.y.toFixed(0)} · assault ${lastAs.y.toFixed(0)} (index, 2006=100)`;
-  $('#div-leg').innerHTML='<span style="color:var(--red)">●</span> shooting incidents &nbsp;&nbsp; <span style="color:var(--steel)">●</span> felony assault complaints &nbsp;·&nbsp; <b>indexed to 2006 = 100</b> (assault’s raw count runs ~15–20× higher; indexing lets the trajectories be compared)';
+  // gun-share stat (shootings per 100 felony assaults)
+  const g06=100*sh[0].incidents/as[0].n, g25=100*sh[sh.length-1].incidents/as[as.length-1].n;
+  $('#gs-a').textContent=g06.toFixed(0);$('#gs-b').textContent=g25.toFixed(0);
+  const s=svg('c-div');const W=760,pl=58,pr=58,pt=12,gap=46;
+  const panelH=160, x0=2006,x1=2025;
+  const X=x=>pl+(W-pl-pr)*(x-x0)/(x1-x0);
+  function panel(yTop,data,key,max,color,title,unit){
+    const Y=v=>yTop+panelH*(1-v/max);
+    for(let i=0;i<=3;i++){const yv=max*i/3,yy=Y(yv);el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);txt(s,pl-8,yy+3,nice(yv),'axis','end');}
+    txt(s,pl,yTop-2,title,'vlabel','start');
+    const pts=data.filter(d=>(d.year)<=lim);
+    const xs=d=>X(d.year), ys=d=>Y(d[key]);
+    // area
+    const dd=el('defs',{},s);const g=el('linearGradient',{id:'gd'+key,x1:0,y1:0,x2:0,y2:1},dd);
+    el('stop',{offset:0,'stop-color':color,'stop-opacity':.16},g);el('stop',{offset:1,'stop-color':color,'stop-opacity':0},g);
+    if(pts.length>1)el('path',{d:'M'+pts.map(d=>xs(d)+' '+ys(d)).join(' L ')+` L ${xs(pts[pts.length-1])} ${Y(0)} L ${xs(pts[0])} ${Y(0)} Z`,fill:`url(#gd${key})`},s);
+    el('path',{d:'M'+pts.map(d=>xs(d)+' '+ys(d)).join(' L '),fill:'none',stroke:color,'stroke-width':2.6,'stroke-linejoin':'round'},s);
+    pts.forEach(d=>{const c=el('circle',{cx:xs(d),cy:ys(d),r:2.4,fill:color},s);c.innerHTML=`<title>${d.year}: ${fmt(d[key])} ${unit}</title>`;});
+    const last=pts[pts.length-1];
+    el('text',{x:xs(last)+6,y:ys(last)+3,class:'vlabel',fill:color},s).textContent=fmt(last[key]);
+  }
+  panel(pt, as, 'n', 32000, 'var(--steel)', 'FELONY ASSAULT COMPLAINTS', 'felony assaults');
+  panel(pt+panelH+gap, sh, 'incidents', 1800, 'var(--red)', 'SHOOTING INCIDENTS', 'shootings');
+  // shared x-axis
+  const xb=pt+2*panelH+gap+16;
+  for(let y=2006;y<=2025;y+=2)txt(s,X(y),xb,y,'axis','middle');
+  $('#div-readout').textContent=`${lim} · ${fmt(sh.find(d=>d.year===lim).incidents)} shootings · ${fmt(as.find(d=>d.year===lim).n)} felony assaults`;
+  $('#div-leg').innerHTML='Two separate vertical scales: felony assault peaks near 30,000 a year; shootings stay under 1,800. As assault drifted up and shootings fell, the gun share of serious violence dropped by roughly three-quarters.';
 }
 let divTimer=null;
 function playDivergence(){
   if(divTimer){clearInterval(divTimer);divTimer=null;$('#divPlay').textContent='▶ Play';return;}
   $('#divPlay').textContent='⏸ Pause';let y=2006;
   drawDivergence(y);
-  divTimer=setInterval(()=>{y++;if(y>2025){clearInterval(divTimer);divTimer=null;$('#divPlay').textContent='▶ Replay';return;}drawDivergence(y);},420);
+  divTimer=setInterval(()=>{y++;if(y>2025){clearInterval(divTimer);divTimer=null;$('#divPlay').textContent='▶ Replay';return;}drawDivergence(y);},360);
 }
 
 /* what-changed cards */
