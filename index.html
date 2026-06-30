@@ -288,7 +288,7 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
     <div class="sub2">Drag the slider to move through the years, or press play to watch the decline unfold. Or switch to <b>20-yr change</b> to see the whole trajectory on a single map: where shootings fell most (steel) and the few places they rose (red), 2023–25 versus 2006–10.</div>
     <div class="controls" style="margin-top:18px">
       <span class="ctl-label">Show</span>
-      <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">By precinct</button><button data-mode="density">Density</button><button data-mode="points">Dots</button><button data-mode="change">20-yr change</button></div>
+      <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">By precinct</button><button data-mode="density">Density</button><button data-mode="points">Dots</button><button data-mode="change">20-yr change</button><button data-mode="streetlight">Streetlight outages</button></div>
       <span class="ctl-label" style="margin-left:6px" id="percap-label">Measure</span>
       <div class="seg" id="seg-percap"><button data-pc="0" class="on">Raw count</button><button data-pc="1">Per 100k residents</button></div>
       <span class="ctl-label" style="margin-left:6px">Fatal only</span>
@@ -301,6 +301,27 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
     </div>
     <div id="map"></div>
     <div class="note" id="mapNote"></div>
+  </div>
+</section>
+
+<!-- STREETLIGHTS -->
+<section class="numbered">
+  <div class="wrap reveal">
+    <div class="kh">Streetlights &amp; gunfire</div>
+    <h2 class="sec">Do broken streetlights track the shootings?</h2>
+    <div class="sub2">A common intuition — dark blocks breed crime — predicts that the city's worst shooting blocks should also be where streetlights stay broken. To test it, every block (a ~110-metre grid cell) was scored on two decades of shootings and on <b id="sl-total"></b> "street light out" complaints to 311 (2010–2026). <b>The two barely line up.</b> Across all shooting blocks the relationship is essentially flat (correlation <b id="sl-corr"></b>), and of the <b id="sl-nhot"></b> worst shooting blocks only <b id="sl-nboth"></b> — about <b id="sl-share"></b> — also rank among the city's most-complained-about for outages, slightly <i>below</i> what chance alone would give.</div>
+    <div class="grid2" style="margin-top:22px">
+      <div>
+        <div class="cap" style="margin-bottom:4px">Each dot is a high-shooting block · outage complaints vs shootings</div>
+        <svg class="chart" id="c-sl" viewBox="0 0 480 360"></svg>
+      </div>
+      <div>
+        <h3 style="font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:2px">The blocks that are both</h3>
+        <div class="cap">the minority of hotspots that are also chronic-outage blocks</div>
+        <div id="sl-list" style="font-family:var(--serif);font-size:15px"></div>
+      </div>
+    </div>
+    <div class="note">A crucial caveat that cuts the other way: 311 counts <i>reported</i> outages, and reporting is uneven — lower-income, higher-violence neighborhoods tend to file fewer 311 complaints per actual problem. So a low outage count on a shooting block may reflect under-reporting, not working lights. This compares where outages are <i>logged</i>, not necessarily where lights are dark. Both layers also rise with population. Treat it as descriptive, not causal.</div>
   </div>
 </section>
 
@@ -383,11 +404,13 @@ let mstate={mode:'choro',year:0,fatal:0,percap:0},hmMode='count',hmSort='boro';
 // cool slate→ink sequential (deliberately not skin/earth tones)
 const MAP_RAMP=['#e3e6e8','#bcc7d0','#8b9fb2','#5e7894','#3b5673','#1d3450'];
 
+let SL=null;
 Promise.all([
   fetch('data/shootings_agg.json').then(r=>r.json()),
   fetch('data/shootings_points.json').then(r=>r.json()),
-  fetch('data/precincts.geojson').then(r=>r.json())
-]).then(([a,p,g])=>{A=a;P=p;geo=g;init();});
+  fetch('data/precincts.geojson').then(r=>r.json()),
+  fetch('data/streetlight_overlap.json').then(r=>r.json()).catch(()=>null)
+]).then(([a,p,g,sl])=>{A=a;P=p;geo=g;SL=sl;init();});
 
 function init(){
   const m=A.meta;
@@ -407,7 +430,7 @@ function init(){
   $('#f-off').textContent=fmt(m.n_offenders)+' offender records';$('#f-range').textContent=m.date_min+' → '+m.date_max;
 
   drawArc();drawCounterfactual();drawDivergence();drawChangeCards();buildHeatmap();
-  drawLevel();drawRankings('share');drawCasualties();
+  drawLevel();drawRankings('share');drawCasualties();drawStreetlight();
   drawWho();drawHeat();drawMonth();drawDow();buildMap();
 
   seg('#seg-arc','a',v=>{arcA=v;drawArc();});
@@ -734,6 +757,31 @@ function drawCasualties(){
   const tot=A.casualties.multi_total;
   $('#cas-note').textContent=`Across two decades, ${fmt(tot)} shootings struck two or more people. The dataset publishes no count of rounds fired, so this — victims per incident — is the only available read on how much firepower an incident involved.`;
 }
+/* streetlights vs shootings: scatter of high-shooting blocks + the both-list */
+function drawStreetlight(){
+  if(!SL){return;}
+  const m=SL.meta;
+  $('#sl-total').textContent=fmt(m.total_outage_complaints);
+  $('#sl-corr').textContent=(m.corr_shootings_outages_across_hotspots>=0?'+':'')+m.corr_shootings_outages_across_hotspots.toFixed(2);
+  $('#sl-nhot').textContent=fmt(m.n_shooting_hotspot_cells);
+  $('#sl-nboth').textContent=fmt(m.n_overlap);
+  $('#sl-share').textContent=m.overlap_share+'%';
+  // scatter
+  const s=svg('c-sl');const W=480,H=360,pad=[16,16,40,46];const[pt,pr,pb,pl]=pad;const pw=W-pl-pr,ph=H-pt-pb;
+  const xmax=Math.max(...SL.scatter.map(d=>d.s))*1.05, ymax=Math.max(...SL.scatter.map(d=>d.o))*1.05;
+  const X=x=>pl+pw*x/xmax, Y=y=>pt+ph*(1-y/ymax);
+  for(let i=0;i<=4;i++){const yv=ymax*i/4,yy=Y(yv);el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);txt(s,pl-7,yy+3,nice(yv),'axis','end');}
+  for(let i=0;i<=4;i++){const xv=xmax*i/4;txt(s,X(xv),pt+ph+16,Math.round(xv),'axis','middle');}
+  txt(s,pl-34,pt-2,'outages','axis','start').setAttribute('fill','var(--dim)');
+  txt(s,W-pr,pt+ph+30,'shootings on the block →','axis','end').setAttribute('fill','var(--dim)');
+  // non-overlap dots first (steel), then overlap (red) on top
+  SL.scatter.filter(d=>!d.c).forEach(d=>{const c=el('circle',{cx:X(d.s),cy:Y(d.o),r:2.6,fill:'#9fb0bf','fill-opacity':.55},s);c.innerHTML=`<title>${d.s} shootings · ${d.o} outage complaints</title>`;});
+  SL.scatter.filter(d=>d.c).forEach(d=>{const c=el('circle',{cx:X(d.s),cy:Y(d.o),r:3.4,fill:'var(--red)','fill-opacity':.9},s);c.innerHTML=`<title>${d.s} shootings · ${d.o} outages — chronic on both</title>`;});
+  // list
+  $('#sl-list').innerHTML=SL.top_overlap.slice(0,12).map(r=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--hair)">
+    <div><b>${r.name||('Precinct '+r.precinct)}</b>${r.address?` <span style="color:var(--dim);font-size:13px">· ${titleCase(r.address)}</span>`:''}</div>
+    <div style="font-family:var(--sans);font-size:13px;white-space:nowrap;color:var(--ink2)"><b style="color:var(--red)">${r.shootings}</b> sh · <b>${r.outages}</b> out</div></div>`).join('');
+}
 function drawHeat(){
   const s=svg('c-heat');const W=760,H=240,padTop=8,padBot=26,padL=46,padR=14;
   const cellW=(W-padL-padR)/24,cellH=(H-padTop-padBot)/7;const max=Math.max(...A.hour_dow.map(d=>d.n));
@@ -756,10 +804,13 @@ function buildMap(){
   ptLayer=L.layerGroup();
   heatLayer=L.heatLayer([],{radius:18,blur:22,minOpacity:.25,max:1.0,
     gradient:{0.0:'#3b5673',0.35:'#5e7894',0.6:'#caa24a',0.8:'#cf6f35',1.0:'#bb2018'}});
+  if(SL&&SL.chronic_cells){const mx=Math.max(...SL.chronic_cells.map(c=>c[2]));
+    slLayer=L.heatLayer(SL.chronic_cells.map(c=>[c[0],c[1],Math.min(1,c[2]/mx)]),
+      {radius:16,blur:20,minOpacity:.25,max:1.0,gradient:{0.0:'#caa24a',0.5:'#e0a23c',1.0:'#7a4a00'}});}
   const lg=L.control({position:'bottomright'});lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.id='legend';return d;};lg.addTo(map);
   renderMap();
 }
-let heatLayer=null;
+let heatLayer=null,slLayer=null;
 function renderDensity(){
   const pts=[];P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;pts.push([lat,lon,fatal?1.0:0.65]);});
   heatLayer.setLatLngs(pts);
@@ -793,7 +844,7 @@ function precPopup(f){const p=precIndex[String(f.properties.precinct)];const nm=
     <div class="pr"><span>Shootings (${mstate.year===0?'all years':mstate.year})</span><b>${fmt(rawCount(p))}</b></div>
     ${rateLine}
     <div class="pr"><span>All-time total</span><b>${fmt(p?p.total:0)}</b></div></div>`;}
-function clearMapLayers(){[choLayer,ptLayer,heatLayer].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l);});}
+function clearMapLayers(){[choLayer,ptLayer,heatLayer,slLayer].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l);});}
 function renderMap(){
   $('#yLabel').textContent=mstate.year===0?'All years':mstate.year;
   const sliderRow=$('#yearSlider').closest('.slider-wrap');
@@ -804,6 +855,13 @@ function renderMap(){
     clearMapLayers();renderDensity();heatLayer.addTo(map);legendDensity();
     if(sliderRow)sliderRow.style.opacity=1,$('#yearSlider').disabled=false;
     $('#mapNote').textContent='A smoothed density surface — the right way to read concentration. Brighter = more shootings clustered. Use the slider to move through the years.';
+    return;
+  }
+  if(mstate.mode==='streetlight'){
+    clearMapLayers();if(slLayer)slLayer.addTo(map);legendSL();
+    if(sliderRow)sliderRow.style.opacity=.4,$('#yearSlider').disabled=true;
+    $('#yLabel').textContent='2010–2026';$('#yCount').textContent='chronic outage blocks';
+    $('#mapNote').textContent='Amber = blocks with the most “street light out” 311 complaints, 2010–2026. Flip back to Density to compare: the gunfire and the dark-block complaints concentrate in mostly different places.';
     return;
   }
   if(mstate.mode==='change'){
@@ -822,6 +880,8 @@ function renderMap(){
 }
 function legendDensity(){const e=document.getElementById('legend');if(!e)return;
   e.innerHTML=`<b>Shooting density${mstate.year?' · '+mstate.year:''}</b><div class="scale"><span class="sw" style="background:#3b5673"></span><span class="sw" style="background:#5e7894"></span><span class="sw" style="background:#caa24a"></span><span class="sw" style="background:#cf6f35"></span><span class="sw" style="background:#bb2018"></span></div><div class="ticks"><span>sparse</span><span>dense</span></div>`;}
+function legendSL(){const e=document.getElementById('legend');if(!e)return;
+  e.innerHTML=`<b>Street-light-out complaints<br>2010–2026</b><div class="scale"><span class="sw" style="background:#f0e2bf"></span><span class="sw" style="background:#caa24a"></span><span class="sw" style="background:#e0a23c"></span><span class="sw" style="background:#a86a14"></span><span class="sw" style="background:#7a4a00"></span></div><div class="ticks"><span>fewer</span><span>chronic</span></div>`;}
 function legendChange(){const e=document.getElementById('legend');if(!e)return;
   e.innerHTML=`<b>20-yr change in shootings</b><div class="scale">${[...DIV_NEG].reverse().concat(DIV_POS).map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div><div class="ticks"><span>−80%</span><span>0</span><span>+80%</span></div>`;}
 function renderPoints(){ptLayer.clearLayers();let n=0;P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;n++;
