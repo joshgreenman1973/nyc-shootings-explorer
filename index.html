@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Twenty years, one map — gun violence in New York City</title>
+<title>New York City gunfire, 2006–2026</title>
 <meta name="description" content="An investigative data record of two decades of shootings in New York City: the long decline, the pandemic surge, the recovery — and how the geography, timing and toll shifted year by year.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,8 +154,8 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
   <div class="wrap">
     <div class="masthead"><span><span class="dot"></span>NYPD shooting record</span><span>New York City</span><span id="mh-range"></span></div>
     <div class="hero">
-      <div class="eyebrow"><span>A statistical accounting</span><b id="eb-range">2006–2026</b></div>
-      <h1 class="title">The gunfire, counted to the block.</h1>
+      <div class="eyebrow"><span>A statistical accounting</span></div>
+      <h1 class="title" id="title">New York City gunfire, 2006–2026</h1>
       <p class="dek">Every shooting the police logged in two decades — <b>24,127</b> of them — placed, dated and tallied. The arc is not one story but several: a long decline, a pandemic shock, a recovery. The question this page keeps testing is <b>how much actually changed, and where.</b></p>
       <div class="stats" id="hstats"></div>
     </div>
@@ -401,7 +401,7 @@ function init(){
     ['−'+fmt(cf.fewer_victims),'fewer shot than a 2006-flat city'],
   ].map(s=>`<div class="stat"><div class="v tnum">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
   $('#mh-range').textContent=m.date_min+' – '+m.date_max;
-  $('#eb-range').textContent=m.date_min.slice(0,4)+'–'+m.date_max.slice(0,4);
+  $('#title').textContent='New York City gunfire, '+m.date_min.slice(0,4)+'–'+m.date_max.slice(0,4);
   $('#m-range').textContent=m.date_min+' to '+m.date_max;
   $('#f-inc').textContent=fmt(m.n_incidents)+' incidents';$('#f-vic').textContent=fmt(m.n_victims)+' victims';
   $('#f-off').textContent=fmt(m.n_offenders)+' offender records';$('#f-range').textContent=m.date_min+' → '+m.date_max;
