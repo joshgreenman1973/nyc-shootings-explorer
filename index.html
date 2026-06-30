@@ -3,153 +3,230 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Two decades of gun violence in New York City</title>
-<meta name="description" content="An interactive map and charts tracing twenty years of shootings in New York City — the long decline, the pandemic surge, and the recent fall — by precinct, time and the people involved.">
+<title>Twenty years, one map — gun violence in New York City</title>
+<meta name="description" content="An investigative data record of two decades of shootings in New York City: the long decline, the pandemic surge, the recovery — and how the geography, timing and toll shifted year by year.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Spline+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#13161c; --ink2:#39414d; --muted:#727c89; --line:#e3e7ec;
-  --paper:#f4f6f8; --card:#fff; --bg:#eceff2;
-  --c1:#f7e9c8; --c2:#f0c073; --c3:#e08a3c; --c4:#c0502a; --c5:#8a1e1a; --c6:#4a0d12;
-  --accent:#b8412b; --fatal:#7a1518; --nonfatal:#e0a04a; --navy:#1a2433;
-  --shadow:0 1px 2px rgba(19,22,28,.05),0 10px 28px rgba(19,22,28,.07);
+  --paper:#f4efe4; --paper2:#ece5d6; --card:#fbf8f1; --ink:#1c1814; --ink2:#4a423a; --dim:#8a7f70;
+  --rule:#ddd3c0; --rule2:#cabd a4;
+  --ox:#8a1e1a; --ox2:#b23a26; --ember:#d4702a; --amber:#e2a23c; --gold:#caa24a;
+  --fatal:#6e1414; --nonfatal:#d98c3f;
+  /* warm sequential ramp for maps */
+  --m0:#efe6d2; --m1:#eccf90; --m2:#e0a24f; --m3:#cf6f35; --m4:#a83a23; --m5:#6e1414;
+  --pos:#1f6f4a; --neg:#8a1e1a;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
-a{color:var(--accent)}
-h1,h2,h3{line-height:1.14;margin:0}
-.num{font-family:Georgia,"Times New Roman",serif;font-variant-numeric:tabular-nums}
+body{font-family:"Spline Sans",system-ui,sans-serif;color:var(--ink);line-height:1.55;
+  background:var(--paper);-webkit-font-smoothing:antialiased;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+a{color:var(--ox)}
+h1,h2,h3{margin:0;line-height:1.1}
+.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.serif{font-family:"Newsreader",Georgia,serif}
 
-header{background:radial-gradient(120% 130% at 80% -10%,#3a2730 0%,#1a2433 55%,#10151f 100%);color:#eef1f5;padding:40px 0 32px}
-header .kicker{text-transform:uppercase;letter-spacing:.15em;font-size:12px;font-weight:700;color:#e0a04a;margin-bottom:12px}
-header h1{font-size:clamp(28px,4.6vw,48px);font-weight:800;letter-spacing:-.025em;max-width:20ch}
-header p.sub{margin:14px 0 0;max-width:64ch;color:#c4ccd6;font-size:clamp(15px,1.6vw,18px)}
-.stats{display:flex;flex-wrap:wrap;gap:30px;margin-top:26px}
-.stat .v{font-family:Georgia,serif;font-size:30px;font-weight:700;color:#fff}
-.stat .l{font-size:12.5px;color:#9aa6b4;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+/* hero */
+header{border-bottom:2px solid var(--ink);padding:30px 0 0}
+.masthead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--rule);padding-bottom:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.hero{padding:46px 0 40px}
+.hero .eyebrow{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.24em;font-size:12px;color:var(--ox);margin-bottom:20px}
+h1.title{font-family:"Newsreader",serif;font-weight:500;font-size:clamp(40px,7vw,82px);letter-spacing:-.02em;line-height:.97;max-width:16ch}
+h1.title em{font-style:italic;color:var(--ox)}
+.dek{font-family:"Newsreader",serif;font-size:clamp(18px,2.2vw,23px);color:var(--ink2);max-width:54ch;margin-top:24px;line-height:1.4}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:40px}
+.stat{background:var(--paper);padding:20px 22px}
+.stat .v{font-family:"Newsreader",serif;font-weight:500;font-size:clamp(28px,3.6vw,42px);letter-spacing:-.01em;line-height:1}
+.stat .v small{font-size:.42em;color:var(--ox);letter-spacing:0}
+.stat .l{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-top:9px}
 
-section{padding:30px 0}
-.lead{max-width:72ch;color:var(--ink2);font-size:17px}
-h2.sec{font-size:23px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
-.sub2{color:var(--muted);font-size:14px;margin-bottom:18px;max-width:76ch}
+section{padding:50px 0;border-bottom:1px solid var(--rule)}
+.kh{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--ox);margin-bottom:14px}
+h2.sec{font-family:"Newsreader",serif;font-weight:500;font-size:clamp(28px,3.8vw,44px);letter-spacing:-.015em;max-width:22ch}
+.sub2{color:var(--ink2);font-size:16px;margin-top:12px;max-width:74ch}
+.sub2 b{color:var(--ink)}
 
-.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}
-.seg{display:inline-flex;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:3px;gap:2px}
-.seg button{border:0;background:transparent;color:var(--ink2);font-size:13px;font-weight:600;padding:7px 13px;border-radius:7px;cursor:pointer}
-.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
-.ctl-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
-
-/* year slider */
-.slider-wrap{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);margin-bottom:14px}
-.slider-wrap input[type=range]{flex:1;accent-color:var(--accent)}
-.yearbadge{min-width:118px}
-.yearbadge .y{font-family:Georgia,serif;font-size:26px;font-weight:700}
-.yearbadge .c{font-size:12px;color:var(--muted)}
-.playbtn{border:1px solid var(--line);background:var(--paper);border-radius:8px;width:38px;height:38px;font-size:15px;cursor:pointer;color:var(--ink)}
-.playbtn:hover{background:#eceff2}
-
-#map{height:600px;border-radius:14px;border:1px solid var(--line);box-shadow:var(--shadow);background:#dde3e8}
-.legend{background:#fff;padding:10px 12px;border-radius:10px;box-shadow:var(--shadow);font-size:12px;line-height:1.6}
-.legend b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
-.legend .scale{display:flex;align-items:center;gap:0}
-.legend .sw{width:26px;height:12px}
-.legend .ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px}
-.leaflet-popup-content{font-family:inherit;margin:12px 14px}
-.pop h4{margin:0 0 6px;font-size:15px}
-.pop .pr{display:flex;justify-content:space-between;gap:18px;font-size:13px;padding:2px 0;border-top:1px dashed var(--line)}
-.pop .pr:first-of-type{border-top:0}
-.pop .pr b{font-family:Georgia,serif}
-
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;box-shadow:var(--shadow)}
-.card h3{font-size:15px;font-weight:700}
-.card .cap{font-size:12.5px;color:var(--muted);margin:3px 0 12px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:20px;box-shadow:0 1px 0 var(--rule),0 12px 30px -22px rgba(28,24,20,.4)}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .full{grid-column:1/-1}
+.card h3{font-family:"Newsreader",serif;font-size:19px;font-weight:500}
+.card .cap{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--dim);margin:4px 0 14px;letter-spacing:.02em}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.seg{display:inline-flex;background:var(--paper2);border:1px solid var(--rule);border-radius:7px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--ink2);font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:500;padding:8px 13px;border-radius:5px;cursor:pointer;letter-spacing:.01em}
+.seg button.on{background:var(--ink);color:var(--paper)}
+.seg button:hover:not(.on){color:var(--ink)}
+.ctl-label{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+
+/* what-changed cards */
+.change-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.cc{background:var(--card);border:1px solid var(--rule);border-top:3px solid var(--ox);border-radius:4px;padding:22px}
+.cc .stat-line{font-family:"Newsreader",serif;font-size:clamp(30px,3vw,40px);font-weight:500;letter-spacing:-.01em;margin:6px 0 2px}
+.cc .stat-line .from{color:var(--dim)}.cc .stat-line .arrow{color:var(--ox);font-style:italic}
+.cc h4{font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ox);font-weight:600;margin:0}
+.cc p{font-size:13.5px;color:var(--ink2);margin:10px 0 14px}
+.cc svg{width:100%;height:54px;display:block}
+
+/* small multiples */
+.sm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+.sm{position:relative;cursor:default}
+.sm svg{width:100%;display:block;border:1px solid var(--rule);border-radius:3px;background:var(--card)}
+.sm .yr{position:absolute;top:5px;left:7px;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--ink)}
+.sm .ct{position:absolute;bottom:4px;right:7px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--dim)}
+.sm.peak svg{border-color:var(--ox);border-width:1.5px}
+.sm-legend{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim);margin-top:16px;justify-content:center}
+.sm-legend .sw{width:22px;height:11px}
+
+/* change rankings */
+.rank{display:flex;flex-direction:column;gap:7px}
+.rk{display:grid;grid-template-columns:26px 130px 1fr 70px;align-items:center;gap:10px;font-size:13px}
+.rk .pos{font-family:"IBM Plex Mono",monospace;color:var(--dim);font-size:11px}
+.rk .nm{font-weight:500}.rk .nm span{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.rk .track{height:22px;background:var(--paper2);border-radius:3px;overflow:hidden;position:relative}
+.rk .fill{height:100%;border-radius:3px}
+.rk .vv{font-family:"IBM Plex Mono",monospace;text-align:right;font-weight:600}
+
+/* map */
+#map{height:560px;border-radius:4px;border:1px solid var(--rule);box-shadow:0 12px 30px -22px rgba(28,24,20,.5);background:var(--paper2)}
+.slider-wrap{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:12px 16px;margin-bottom:14px}
+.slider-wrap input[type=range]{flex:1;accent-color:var(--ox)}
+.playbtn{border:1px solid var(--rule);background:var(--paper2);border-radius:6px;width:38px;height:38px;font-size:14px;cursor:pointer;color:var(--ink)}
+.yearbadge{min-width:120px}.yearbadge .y{font-family:"Newsreader",serif;font-size:26px;font-weight:500}.yearbadge .c{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--dim)}
+.legend{background:var(--card);padding:10px 13px;border-radius:6px;border:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink2)}
+.legend b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.legend .scale{display:flex}.legend .sw{width:24px;height:11px}.legend .ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:3px}
+.leaflet-popup-content-wrapper{background:var(--card);color:var(--ink);border-radius:6px;border:1px solid var(--rule2)}
+.leaflet-popup-content{font-family:"Spline Sans",sans-serif;margin:12px 14px}
+.pop h4{font-family:"Newsreader",serif;font-size:18px;margin:0 0 2px}
+.pop .meta{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.pop .pr{display:flex;justify-content:space-between;gap:20px;font-size:13px;padding:3px 0;border-top:1px solid var(--rule)}
+.pop .pr b{font-family:"IBM Plex Mono",monospace}
+
+/* charts */
 svg.chart{width:100%;display:block;overflow:visible}
-.axis text{font-size:11px;fill:var(--muted)}
-.gridline{stroke:#eef1f4}
-.lbl{font-size:11px;fill:var(--ink2)}
-.val{font-size:10.5px;fill:var(--ink2);font-weight:600;font-family:Georgia,serif}
-.dot-leg{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.axis{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--dim)}
+.gridline{stroke:var(--rule)}
+.lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--ink2)}
+.vlabel{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--ink);font-weight:600}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-td.n{text-align:right;font-family:Georgia,serif;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule)}
+th{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-weight:500}
+td.n{text-align:right;font-family:"IBM Plex Mono",monospace}
 
-details.method{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 18px;box-shadow:var(--shadow)}
-details.method summary{cursor:pointer;font-weight:700;padding:12px 0;font-size:15px}
-details.method[open] summary{border-bottom:1px solid var(--line);margin-bottom:10px}
-.method p,.method li{font-size:13.5px;color:var(--ink2)}
-.method code{background:var(--paper);padding:1px 5px;border-radius:4px;font-size:12px}
-footer{padding:30px 0 60px;color:var(--muted);font-size:13px}
-.ai-btn{display:inline-block;background:#8a1e1a;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
-.ai-pop{display:none;margin-top:12px;background:var(--navy);color:#d5dde6;border-radius:12px;padding:16px 18px;font-size:13px;max-width:72ch;line-height:1.6}
-.ai-pop.show{display:block}.ai-pop b{color:#fff}
-.pill{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:12px;color:var(--ink2);margin:2px 4px 2px 0}
-.note{background:#fbf3e8;border:1px solid #f0dcbf;border-radius:10px;padding:12px 14px;font-size:13px;color:#6b4e2a;max-width:78ch;margin-top:14px}
-@media(max-width:760px){.grid{grid-template-columns:1fr}#map{height:460px}.yearbadge{min-width:92px}}
+details.method{border:1px solid var(--rule);border-radius:4px;padding:6px 22px;background:var(--card)}
+details.method summary{cursor:pointer;font-family:"Newsreader",serif;font-weight:500;padding:15px 0;font-size:18px}
+details.method[open] summary{border-bottom:1px solid var(--rule);margin-bottom:12px}
+.method p{font-size:13.5px;color:var(--ink2)}
+.method code{background:var(--paper2);padding:1px 6px;border-radius:3px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ox)}
+.ai-btn{background:var(--ink);color:var(--paper);border:0;border-radius:6px;padding:9px 15px;font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;cursor:pointer}
+.ai-pop{display:none;margin-top:14px;background:var(--paper2);border:1px solid var(--rule);border-radius:6px;padding:18px;font-size:13px;color:var(--ink2);max-width:74ch;line-height:1.65}
+.ai-pop.show{display:block}.ai-pop b{color:var(--ink)}
+.note{background:#f8eee0;border:1px solid #e8d6bb;border-radius:6px;padding:12px 14px;font-size:13px;color:#6b4e2a;max-width:80ch;margin-top:14px}
+footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"IBM Plex Mono",monospace;border:0}
+.pill{display:inline-block;border:1px solid var(--rule2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--ink2);margin:3px 5px 3px 0}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
+.reveal.in{opacity:1;transform:none}
+@media(max-width:900px){.grid2,.grid3,.change-cards{grid-template-columns:1fr}.sm-grid{grid-template-columns:repeat(4,1fr)}.stats{grid-template-columns:repeat(2,1fr)}.rk{grid-template-columns:22px 100px 1fr 60px}}
 </style>
 </head>
 <body>
 <header>
   <div class="wrap">
-    <div class="kicker">New York City · 2006–2026</div>
-    <h1>Two decades of gun violence</h1>
-    <p class="sub">More than 24,000 shootings, mapped and counted across twenty years — the long decline of the 2010s, the pandemic surge, and the steep fall now under way. Explore where, when and whom.</p>
-    <div class="stats" id="hstats"></div>
+    <div class="masthead"><span>New York City · public safety</span><span id="mh-range"></span></div>
+    <div class="hero">
+      <div class="eyebrow">An interactive record · 2006–2026</div>
+      <h1 class="title">Twenty years,<br>one <em>map</em></h1>
+      <p class="dek">More than 24,000 shootings, counted and placed across two decades. Not one story but several — a long decline, a pandemic shock, a recovery — and a geography, timing and toll that shifted underneath it all.</p>
+      <div class="stats" id="hstats"></div>
+    </div>
   </div>
 </header>
 
+<!-- LONG ARC -->
 <section>
-  <div class="wrap">
-    <p class="lead">Every shooting incident the New York Police Department has logged since 2006 is here, joined to records on the people shot and, where an arrest was made, the people who fired. The picture is not one story but several: a citywide drop of more than half through the 2010s, a sharp reversal in 2020, and — over the last four years — a return toward the lowest levels on record.</p>
-  </div>
-</section>
-
-<section style="padding-top:6px">
-  <div class="wrap">
-    <h2 class="sec">The long arc, 2006 to 2026</h2>
-    <div class="sub2">Shooting incidents per year. Toggle fatal shootings, and the y-axis baseline, to read the trend two ways. 2026 is a partial year (through March).</div>
-    <div class="controls">
-      <div class="seg" id="seg-arc">
-        <button data-a="both" class="on">All shootings</button>
-        <button data-a="split">Fatal vs nonfatal</button>
-      </div>
+  <div class="wrap reveal">
+    <div class="kh">The shape of two decades</div>
+    <h2 class="sec">Down, then up, then down again</h2>
+    <div class="sub2">Shooting incidents per year. The 2010s decline gave way to a pandemic surge in 2020–21 — both <b>full, comparable years</b> — and then the steepest fall on record. 2026 is partial (through March).</div>
+    <div class="controls" style="margin-top:18px">
+      <div class="seg" id="seg-arc"><button data-a="both" class="on">All shootings</button><button data-a="split">Fatal vs nonfatal</button></div>
       <span style="flex:1"></span>
       <span class="ctl-label">Y-axis</span>
-      <div class="seg" id="seg-zero">
-        <button data-z="1" class="on">From zero</button>
-        <button data-z="0">Fit data</button>
-      </div>
+      <div class="seg" id="seg-zero"><button data-z="1" class="on">From zero</button><button data-z="0">Fit data</button></div>
     </div>
-    <div class="card full"><svg class="chart" id="c-arc" viewBox="0 0 720 320"></svg>
-      <div id="arc-leg" style="font-size:12px;color:var(--ink2);margin-top:6px"></div>
-    </div>
+    <div class="card full"><svg class="chart" id="c-arc" viewBox="0 0 760 320"></svg><div id="arc-leg" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink2);margin-top:6px"></div></div>
   </div>
 </section>
 
+<!-- WHAT CHANGED -->
 <section>
-  <div class="wrap">
-    <h2 class="sec">Where shootings happen</h2>
-    <div class="sub2">Drag the slider to move through the years, or show all twenty at once. Switch between police-precinct totals and the location of individual shootings.</div>
-    <div class="controls">
-      <span class="ctl-label">Show</span>
-      <div class="seg" id="seg-mapmode">
-        <button data-mode="choro" class="on">Precinct totals</button>
-        <button data-mode="points">Individual shootings</button>
-      </div>
-      <span class="ctl-label" style="margin-left:8px">Fatal only</span>
-      <div class="seg" id="seg-fatal">
-        <button data-f="0" class="on">No</button>
-        <button data-f="1">Yes</button>
+  <div class="wrap reveal">
+    <div class="kh">What changed underneath</div>
+    <h2 class="sec">The totals fell. The patterns shifted.</h2>
+    <div class="sub2">Looking only at the all-time picture hides the most interesting part. Three things genuinely changed over the twenty years:</div>
+    <div class="change-cards" id="change-cards" style="margin-top:22px"></div>
+  </div>
+</section>
+
+<!-- SMALL MULTIPLES -->
+<section>
+  <div class="wrap reveal">
+    <div class="kh">Every year at a glance</div>
+    <h2 class="sec">Twenty maps, one wall</h2>
+    <div class="sub2">Each small map is a single year, every police precinct shaded by its shooting count on one shared scale. Read left-to-right, top-to-bottom: the mid-2010s lull, the 2020–21 flare, the fade since. No dots — just the city, twenty times.</div>
+    <div class="controls" style="margin-top:18px">
+      <span class="ctl-label">Shade by</span>
+      <div class="seg" id="seg-sm"><button data-s="count" class="on">Shooting count</button><button data-s="share">Share of city total</button></div>
+    </div>
+    <div class="sm-grid" id="sm-grid"></div>
+    <div class="sm-legend" id="sm-legend"></div>
+  </div>
+</section>
+
+<!-- NEIGHBORHOODS THAT CHANGED -->
+<section>
+  <div class="wrap reveal">
+    <div class="kh">The shifting geography</div>
+    <h2 class="sec">Which neighborhoods changed the most</h2>
+    <div class="sub2">Police precincts, labeled by the neighborhood they cover. Three different questions, three different answers — toggle between them.</div>
+    <div class="controls" style="margin-top:18px">
+      <div class="seg" id="seg-rank">
+        <button data-r="share" class="on">Shift in share of city total</button>
+        <button data-r="spike">Biggest pandemic spikes</button>
+        <button data-r="decline">Biggest declines since</button>
       </div>
     </div>
+    <div class="grid2">
+      <div class="card"><h3 id="rank-t1"></h3><div class="cap" id="rank-c1"></div><div class="rank" id="rank-1"></div></div>
+      <div class="card"><h3 id="rank-t2"></h3><div class="cap" id="rank-c2"></div><div class="rank" id="rank-2"></div></div>
+    </div>
+    <div class="note" id="rank-note"></div>
+  </div>
+</section>
+
+<!-- INTERACTIVE MAP -->
+<section>
+  <div class="wrap reveal">
+    <div class="kh">Explore it yourself</div>
+    <h2 class="sec">The interactive map</h2>
+    <div class="sub2">Move through the years, or play them in sequence. Switch between precinct totals and the location of individual shootings.</div>
+    <div class="controls" style="margin-top:18px">
+      <span class="ctl-label">Show</span>
+      <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">Precinct totals</button><button data-mode="points">Individual shootings</button></div>
+      <span class="ctl-label" style="margin-left:6px">Fatal only</span>
+      <div class="seg" id="seg-fatal"><button data-f="0" class="on">No</button><button data-f="1">Yes</button></div>
+    </div>
     <div class="slider-wrap">
-      <button class="playbtn" id="playBtn" title="Play through the years">▶</button>
-      <div class="yearbadge"><div class="y num" id="yLabel">All years</div><div class="c" id="yCount"></div></div>
+      <button class="playbtn" id="playBtn">▶</button>
+      <div class="yearbadge"><div class="y mono" id="yLabel">All years</div><div class="c" id="yCount"></div></div>
       <input type="range" id="yearSlider" min="2005" max="2026" step="1" value="2005">
     </div>
     <div id="map"></div>
@@ -157,86 +234,50 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:13px}
   </div>
 </section>
 
+<!-- WHO -->
 <section>
-  <div class="wrap">
-    <h2 class="sec">Borough by borough</h2>
-    <div class="sub2">The same arc, drawn for each borough. Brooklyn and the Bronx carry the great majority of shootings; the pandemic surge and recent decline appear everywhere.</div>
-    <div class="card full"><svg class="chart" id="c-boro" viewBox="0 0 720 300"></svg>
-      <div id="boro-leg" style="font-size:12px;color:var(--ink2);margin-top:8px"></div>
+  <div class="wrap reveal">
+    <div class="kh">The people</div>
+    <h2 class="sec">Who is shot, and who fires</h2>
+    <div class="sub2">Victim records cover essentially every shooting (28,912). Offender records exist only where a suspect was identified (18,901) — an arrest-skewed subset, read with care. Shown side by side.</div>
+    <div class="grid2" style="margin-top:20px">
+      <div class="card"><h3>Victims</h3><div class="cap">28,912 people shot · age, sex, race</div>
+        <svg class="chart" id="c-vage" viewBox="0 0 360 150"></svg>
+        <svg class="chart" id="c-vsex" viewBox="0 0 360 110"></svg>
+        <svg class="chart" id="c-vrace" viewBox="0 0 360 180"></svg></div>
+      <div class="card" style="border-top:3px solid var(--dim)"><h3>Offenders</h3><div class="cap">18,901 identified suspects · age, sex, race</div>
+        <svg class="chart" id="c-oage" viewBox="0 0 360 150"></svg>
+        <svg class="chart" id="c-osex" viewBox="0 0 360 110"></svg>
+        <svg class="chart" id="c-orace" viewBox="0 0 360 180"></svg></div>
     </div>
   </div>
 </section>
 
+<!-- WHEN -->
 <section>
-  <div class="wrap">
+  <div class="wrap reveal">
+    <div class="kh">The clock and the calendar</div>
     <h2 class="sec">When shootings happen</h2>
-    <div class="sub2">Across all twenty years, shootings concentrate sharply in summer, on weekends, and late at night.</div>
-    <div class="grid">
-      <div class="card full">
-        <h3>By day and hour</h3>
-        <div class="cap">Share of all shootings in each weekday-and-hour cell — darker is more. The late-night weekend cluster is unmistakable.</div>
-        <svg class="chart" id="c-heat" viewBox="0 0 720 230"></svg>
-      </div>
-      <div class="card">
-        <h3>By month</h3>
-        <div class="cap">Seasonality across all years</div>
-        <svg class="chart" id="c-month" viewBox="0 0 360 200"></svg>
-      </div>
-      <div class="card">
-        <h3>By day of week</h3>
-        <div class="cap">Monday through Sunday</div>
-        <svg class="chart" id="c-dow" viewBox="0 0 360 200"></svg>
-      </div>
+    <div class="sub2">Summer, weekends and late nights — though, as the cards above showed, the late-night concentration has eased over the years.</div>
+    <div class="grid2" style="margin-top:20px">
+      <div class="card full"><h3>By day and hour</h3><div class="cap">share of all shootings in each weekday-hour cell — darker is more</div><svg class="chart" id="c-heat" viewBox="0 0 760 240"></svg></div>
+      <div class="card"><h3>By month</h3><div class="cap">seasonality, all years</div><svg class="chart" id="c-month" viewBox="0 0 360 200"></svg></div>
+      <div class="card"><h3>By day of week</h3><div class="cap">Monday through Sunday</div><svg class="chart" id="c-dow" viewBox="0 0 360 200"></svg></div>
     </div>
   </div>
 </section>
 
+<!-- METHOD -->
 <section>
-  <div class="wrap">
-    <h2 class="sec">Who is shot</h2>
-    <div class="sub2">Demographics of the people shot, across all 28,912 victim records. Roughly one in six shootings is fatal.</div>
-    <div class="grid">
-      <div class="card"><h3>Victim age</h3><div class="cap">Age group at time of shooting</div><svg class="chart" id="c-vage" viewBox="0 0 360 200"></svg></div>
-      <div class="card"><h3>Victim sex</h3><div class="cap">Recorded sex</div><svg class="chart" id="c-vsex" viewBox="0 0 360 200"></svg></div>
-      <div class="card full"><h3>Victim race/ethnicity</h3><div class="cap">As recorded by the NYPD</div><svg class="chart" id="c-vrace" viewBox="0 0 720 220"></svg></div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <h2 class="sec">How deadly, over time</h2>
-    <div class="sub2">The share of shootings that kill has stayed within a fairly narrow band even as the overall count swung — fatality is driven more by the nature of the wound than by year.</div>
-    <div class="card full"><svg class="chart" id="c-fatalrate" viewBox="0 0 720 240"></svg></div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <h2 class="sec">Who fires</h2>
-    <div class="sub2">Offender demographics are known only for shootings that led to an identified suspect (about 18,900 records). They are an arrest-skewed sample, not the full population of shooters — read them with that caveat.</div>
-    <div class="grid">
-      <div class="card"><h3>Offender age</h3><div class="cap">Where an offender was identified</div><svg class="chart" id="c-oage" viewBox="0 0 360 200"></svg></div>
-      <div class="card"><h3>Offender sex</h3><div class="cap">Where an offender was identified</div><svg class="chart" id="c-osex" viewBox="0 0 360 200"></svg></div>
-    </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
+  <div class="wrap reveal">
     <details class="method">
-      <summary>Methodology, sources and limitations</summary>
-      <p><b>Data sources.</b> NYC Open Data's shooting collection, published February 2026: <a href="https://data.cityofnewyork.us/d/5ucz-vwe8" target="_blank" rel="noopener">Shootings (2006–Present)</a> (<code>5ucz-vwe8</code>), <a href="https://data.cityofnewyork.us/d/pztn-9bne" target="_blank" rel="noopener">Shooting Victims</a> (<code>pztn-9bne</code>) and <a href="https://data.cityofnewyork.us/d/gdk4-mbsv" target="_blank" rel="noopener">Shooting Offenders</a> (<code>gdk4-mbsv</code>). Precinct boundaries are the shoreline-clipped <a href="https://data.cityofnewyork.us/d/y76i-bdw7" target="_blank" rel="noopener">Police Precincts</a> layer (<code>y76i-bdw7</code>). Data pulled <span id="m-gen"></span>; records run <span id="m-range"></span>.</p>
-      <p><b>What a row is.</b> The Shootings table is incident-level (one row per shooting event). Victims and offenders are joined to incidents on <code>incident_key</code>; a single incident can have several of each. Charts of "shootings" count incidents; demographic charts count victim or offender records. An incident is treated as <b>fatal</b> if at least one of its victims is flagged a statistical murder.</p>
-      <p><b>A data fix worth noting.</b> In the source Shootings table the <code>latitude</code> and <code>longitude</code> columns are swapped (the field labeled latitude actually holds longitude). We correct the orientation before mapping; without the fix every point lands in the wrong hemisphere. One record lacks usable coordinates and is mapped nowhere but still counted in every chart.</p>
-      <p><b>The precinct map.</b> The choropleth colors each precinct by its shooting count for the selected year (or all years). Counts are not population-adjusted — a busy precinct can lead on raw numbers partly because more people live or move through it. Read it as "where shootings occur," not "your personal risk." 2026 is partial (through March) and will look low.</p>
-      <p><b>Offender data caveat.</b> Offender records exist only when a suspect was identified, which happens in a minority of shootings and is itself uneven across place and time. Offender demographics therefore describe <i>identified</i> shooters, an arrest-skewed subset — not all shooters. Victim data, by contrast, covers essentially every shooting. Confidence: <b>high</b> for incident counts, geography and victim demographics; <b>medium</b> for offender demographics.</p>
-      <p><b>Other limits.</b> NYPD records reflect reported and recorded shootings; definitions and reporting practices can shift over years. Race/ethnicity categories are the department's own. Nothing here is modeled or projected — every figure is a direct count of published records.</p>
-      <div style="margin-top:14px">
-        <button class="ai-btn" id="aiBtn">⚠ A note on AI assistance</button>
-        <div class="ai-pop" id="aiPop">
-          <b>How this was made.</b> The data pipeline, map and charts were built with AI assistance (Claude). Every number is computed directly from the four NYC Open Data datasets above by a transparent script — nothing is AI-estimated or invented. Checks performed: incident, victim and offender row counts reconciled against the source totals (24,127 / 28,912 / 18,901); the latitude/longitude swap was caught and corrected against sample records and the precinct map; the fatal-incident join and yearly totals were spot-checked against the source. Not independently re-reported: the NYPD's own classification, geocoding and arrest decisions, which we take as published. Treat the linked datasets as ground truth.
-        </div>
+      <summary>Methodology, sources &amp; limitations</summary>
+      <p><b style="color:var(--ink)">Sources.</b> NYC Open Data's shooting collection (published Feb 2026): <a href="https://data.cityofnewyork.us/d/5ucz-vwe8" target="_blank" rel="noopener">Shootings</a> (<code>5ucz-vwe8</code>), <a href="https://data.cityofnewyork.us/d/pztn-9bne" target="_blank" rel="noopener">Victims</a> (<code>pztn-9bne</code>), <a href="https://data.cityofnewyork.us/d/gdk4-mbsv" target="_blank" rel="noopener">Offenders</a> (<code>gdk4-mbsv</code>), and the shoreline-clipped <a href="https://data.cityofnewyork.us/d/y76i-bdw7" target="_blank" rel="noopener">Police Precincts</a> (<code>y76i-bdw7</code>). Records run <span id="m-range"></span>; 2026 is partial.</p>
+      <p><b style="color:var(--ink)">Counting.</b> "Shootings" are incidents (one row per event); victims/offenders join on <code>incident_key</code>. An incident is <b>fatal</b> if any victim carries the statistical-murder flag. The source <code>latitude</code>/<code>longitude</code> columns are swapped; we correct them before mapping. Junk ages (e.g. 1022) and mixed sex labels are normalized.</p>
+      <p><b style="color:var(--ink)">Neighborhoods &amp; change windows.</b> The geographic unit is the NYPD precinct, labeled with the neighborhood it mainly covers (approximate, for readability). <b>Share of city total</b> compares a pre-pandemic window (2015–2019 average) with a recent one (2021–2025). <b>Pandemic spikes</b> compare 2018–2019 with 2020–2021. <b>Declines</b> compare 2020–2021 with 2023–2025. Low-volume precincts (under 60 lifetime shootings) are excluded from the change tables for stability. Counts are raw, not population-adjusted — read as "where," not personal risk.</p>
+      <p><b style="color:var(--ink)">Confidence.</b> <b>High</b> for incident counts, geography, timing and victim demographics; <b>medium</b> for offender demographics (identified-suspect subset) and the demographic-share trends (category definitions can shift over twenty years). Nothing is modeled — every figure is a direct count of published records.</p>
+      <div style="margin-top:16px"><button class="ai-btn" id="aiBtn">⚠ A note on AI assistance</button>
+        <div class="ai-pop" id="aiPop"><b>How this was made.</b> The pipeline, maps and charts were built with AI assistance (Claude). Every number is computed directly from the four datasets by a transparent script — nothing is AI-estimated. Checks: incident/victim/offender counts reconciled with source totals (24,127 / 28,912 / 18,901); the lat/lon swap caught and corrected against sample records and the precinct map; yearly totals and the fatal-incident join spot-checked; precinct change windows hand-verified for several neighborhoods. Not independently re-reported: NYPD classification, geocoding and arrest decisions, taken as published.</div>
       </div>
     </details>
   </div>
@@ -244,11 +285,8 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:13px}
 
 <footer>
   <div class="wrap">
-    <span class="pill" id="f-inc"></span>
-    <span class="pill" id="f-vic"></span>
-    <span class="pill" id="f-off"></span>
-    <span class="pill" id="f-range"></span>
-    <div style="margin-top:10px">Source: NYPD via NYC Open Data. An independent civic-data project; not affiliated with the NYPD or the City of New York.</div>
+    <span class="pill" id="f-inc"></span><span class="pill" id="f-vic"></span><span class="pill" id="f-off"></span><span class="pill" id="f-range"></span>
+    <div style="margin-top:12px">Source: NYPD via NYC Open Data · an independent civic-data project, not affiliated with the NYPD or the City of New York.</div>
   </div>
 </footer>
 
@@ -256,9 +294,9 @@ footer{padding:30px 0 60px;color:var(--muted);font-size:13px}
 <script>
 const fmt=n=>Math.round(n).toLocaleString('en-US');
 const $=s=>document.querySelector(s);
-let A=null, P=null, map=null, choLayer=null, ptLayer=null, geo=null;
-let mstate={mode:'choro',year:0,fatal:0}; // year 0 = all
-let arcState={a:'both',zero:1};
+let A=null,P=null,geo=null,map=null,choLayer=null,ptLayer=null,precIndex={};
+let mstate={mode:'choro',year:0,fatal:0},smMode='count';
+const MAP_RAMP=['#efe6d2','#eccf90','#e0a24f','#cf6f35','#a83a23','#6e1414'];
 
 Promise.all([
   fetch('data/shootings_agg.json').then(r=>r.json()),
@@ -269,247 +307,244 @@ Promise.all([
 function init(){
   const m=A.meta;
   const peak=A.by_year.reduce((x,y)=>y.incidents>x.incidents?y:x);
-  const last=A.by_year[A.by_year.length-1];
-  const stats=[
+  const totFatal=A.by_year.reduce((s,y)=>s+y.fatal,0);
+  $('#hstats').innerHTML=[
     [fmt(m.n_incidents),'shootings since 2006'],
     [fmt(m.n_victims),'people shot'],
-    [pct(A.by_year.reduce((s,y)=>s+y.fatal,0),m.n_incidents),'were fatal'],
-    [peak.incidents+' ('+peak.year+')','worst single year'],
-  ];
-  $('#hstats').innerHTML=stats.map(s=>`<div class="stat"><div class="v num">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
-  $('#m-gen').textContent=m.generated;
+    [(100*totFatal/m.n_incidents).toFixed(0)+'<small>%</small>','of shootings fatal'],
+    [peak.incidents+'<small> in '+peak.year+'</small>','worst single year'],
+  ].map(s=>`<div class="stat"><div class="v serif">${s[0]}</div><div class="l">${s[1]}</div></div>`).join('');
+  $('#mh-range').textContent=m.date_min+' – '+m.date_max;
   $('#m-range').textContent=m.date_min+' to '+m.date_max;
-  $('#f-inc').textContent=fmt(m.n_incidents)+' incidents';
-  $('#f-vic').textContent=fmt(m.n_victims)+' victims';
-  $('#f-off').textContent=fmt(m.n_offenders)+' offender records';
-  $('#f-range').textContent=m.date_min+' → '+m.date_max;
+  $('#f-inc').textContent=fmt(m.n_incidents)+' incidents';$('#f-vic').textContent=fmt(m.n_victims)+' victims';
+  $('#f-off').textContent=fmt(m.n_offenders)+' offender records';$('#f-range').textContent=m.date_min+' → '+m.date_max;
 
-  drawArc(); drawBoroLines(); drawHeat(); drawMonth(); drawDow();
-  drawDemo('c-vage',A.victim_age,'#c0502a'); drawDemo('c-vsex',A.victim_sex,'#c0502a');
-  drawDemo('c-vrace',A.victim_race,'#8a1e1a',720); drawFatalRate();
-  drawDemo('c-oage',A.offender_age,'#39414d'); drawDemo('c-osex',A.offender_sex,'#39414d');
-  buildMap();
+  drawArc();drawChangeCards();buildSmallMultiples();drawRankings('share');
+  drawWho();drawHeat();drawMonth();drawDow();buildMap();
 
-  segHandler('#seg-arc','a',v=>{arcState.a=v;drawArc();});
-  segHandler('#seg-zero','z',v=>{arcState.zero=+v;drawArc();});
-  segHandler('#seg-mapmode','mode',v=>{mstate.mode=v;renderMap();});
-  segHandler('#seg-fatal','f',v=>{mstate.fatal=+v;renderMap();});
-  $('#yearSlider').oninput=e=>{const y=+e.target.value;mstate.year=(y<=2005?0:y);updateYearLabel();renderMap();};
-  $('#aiBtn').onclick=()=>$('#aiPop').classList.toggle('show');
+  seg('#seg-arc','a',v=>{arcA=v;drawArc();});
+  seg('#seg-zero','z',v=>{arcZero=+v;drawArc();});
+  seg('#seg-sm','s',v=>{smMode=v;buildSmallMultiples();});
+  seg('#seg-rank','r',v=>drawRankings(v));
+  seg('#seg-mapmode','mode',v=>{mstate.mode=v;renderMap();});
+  seg('#seg-fatal','f',v=>{mstate.fatal=+v;renderMap();});
+  $('#yearSlider').oninput=e=>{const y=+e.target.value;mstate.year=(y<=2005?0:y);renderMap();};
   $('#playBtn').onclick=togglePlay;
-  updateYearLabel();
+  $('#aiBtn').onclick=()=>$('#aiPop').classList.toggle('show');
+  observe();
 }
-function pct(a,b){return (a/b*100).toFixed(1)+'%';}
-function segHandler(sel,attr,cb){const seg=$(sel);seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(b.dataset[attr]);});}
+function seg(sel,attr,cb){const s=$(sel);s.querySelectorAll('button').forEach(b=>b.onclick=()=>{s.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(b.dataset[attr]);});}
+function observe(){const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');}),{threshold:.08});document.querySelectorAll('.reveal').forEach(el=>io.observe(el));}
 
-/* ---------- chart helpers ---------- */
+/* chart primitives */
 function svg(id){const s=document.getElementById(id);s.innerHTML='';return s;}
-function el(tag,attrs,parent){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
-function text(p,x,y,str,cls,anchor){const t=el('text',{x,y,class:cls||'lbl','text-anchor':anchor||'start'},p);t.textContent=str;return t;}
-function niceNum(n){n=Math.round(n);return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':n;}
-
-function lineChart(id,series,{W=720,H=320,pad=[18,16,40,46],zero=true,fmtY=niceNum,markers=true}){
-  const s=svg(id);const [pt,pr,pb,pl]=pad;const plotW=W-pl-pr,plotH=H-pt-pb;
-  const allY=series.flatMap(se=>se.pts.map(p=>p.y));
-  let ymax=Math.max(...allY), ymin=zero?0:Math.min(...allY);
-  const span=ymax-ymin||1; ymax+=span*0.08; if(!zero)ymin=Math.max(0,ymin-span*0.08);
-  const xs=series[0].pts.map(p=>p.x);
-  const xmin=Math.min(...xs),xmax=Math.max(...xs);
-  const X=x=>pl+plotW*(x-xmin)/((xmax-xmin)||1);
-  const Y=y=>pt+plotH*(1-(y-ymin)/(ymax-ymin));
-  const ticks=5;
-  for(let i=0;i<=ticks;i++){const yv=ymin+(ymax-ymin)*i/ticks,yy=Y(yv);
-    el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);
-    text(s,pl-7,yy+3,fmtY(yv),'axis','end');}
-  // x labels (years) every 2
-  series[0].pts.forEach((p,i)=>{if(i%2===0||i===series[0].pts.length-1)text(s,X(p.x),pt+plotH+16,p.x,'axis','middle');});
-  series.forEach(se=>{
-    if(se.fill){const d='M'+se.pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L ')+` L ${X(xmax)} ${Y(ymin)} L ${X(xmin)} ${Y(ymin)} Z`;
-      el('path',{d,fill:se.color,'fill-opacity':se.fillOp||0.12,stroke:'none'},s);}
-    const d='M'+se.pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L ');
-    el('path',{d,fill:'none',stroke:se.color,'stroke-width':se.w||2.5,'stroke-linejoin':'round'},s);
-    if(markers&&se.dots!==false)se.pts.forEach(p=>{const c=el('circle',{cx:X(p.x),cy:Y(p.y),r:se.r||3,fill:se.color},s);c.innerHTML=`<title>${p.x}: ${fmt(p.y)}</title>`;});
-  });
-  return {X,Y};
-}
-
-function vbars(id,data,{val,label,color,fmtVal,W=360,H=200,pad=[18,8,34,42],rotate=false,topLabel=null,horizontal=false}){
-  const s=svg(id);const [pt,pr,pb,pl]=pad;const plotW=W-pl-pr,plotH=H-pt-pb;
-  const max=Math.max(...data.map(val))||1;
-  if(horizontal){
-    const n=data.length,bh=plotH/n*0.7,gap=plotH/n;
-    data.forEach((d,i)=>{const v=val(d),y=pt+gap*i+(gap-bh)/2,bw=plotW*v/max;
-      const r=el('rect',{x:pl,y,width:Math.max(0,bw),height:bh,rx:3,fill:color?color(d,i):'var(--accent)'},s);
-      r.innerHTML=`<title>${label(d)}: ${fmtVal?fmtVal(v):fmt(v)}</title>`;
-      text(s,pl-6,y+bh/2+4,label(d),'axis','end');
-      text(s,pl+bw+5,y+bh/2+4,fmtVal?fmtVal(v):fmt(v),'val','start');});
-    return;
-  }
-  const n=data.length,bw=plotW/n*0.66,gap=plotW/n;
-  for(let i=0;i<=4;i++){const yy=pt+plotH-plotH*i/4;el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);text(s,pl-6,yy+3,niceNum(max*i/4),'axis','end');}
-  data.forEach((d,i)=>{const v=val(d),x=pl+gap*i+(gap-bw)/2,bh=plotH*v/max,y=pt+plotH-bh;
-    const r=el('rect',{x,y,width:bw,height:Math.max(0,bh),rx:3,fill:color?color(d,i):'var(--accent)'},s);
-    r.innerHTML=`<title>${label(d)}: ${fmtVal?fmtVal(v):fmt(v)}</title>`;
-    if(topLabel){const tl=topLabel(d);if(tl)text(s,x+bw/2,y-4,tl,'val','middle');}
-    if(rotate){const tx=x+bw/2,ty=pt+plotH+12;const t=text(s,tx,ty,label(d),'axis','end');t.setAttribute('transform',`rotate(-38 ${tx} ${ty})`);}
-    else text(s,x+bw/2,pt+plotH+15,label(d),'axis','middle');});
-}
-
-/* ---------- charts ---------- */
-function drawArc(){
-  const data=A.by_year;
-  let series;
-  if(arcState.a==='both'){
-    series=[{color:'var(--accent)',fill:true,pts:data.map(d=>({x:d.year,y:d.incidents}))}];
-    $('#arc-leg').innerHTML=`<span class="dot-leg" style="background:var(--accent)"></span>All shooting incidents`;
-  }else{
-    series=[
-      {color:'var(--nonfatal)',pts:data.map(d=>({x:d.year,y:d.incidents-d.fatal}))},
-      {color:'var(--fatal)',fill:true,fillOp:0.14,pts:data.map(d=>({x:d.year,y:d.fatal}))}
-    ];
-    $('#arc-leg').innerHTML=`<span class="dot-leg" style="background:var(--nonfatal)"></span>Nonfatal &nbsp;&nbsp;<span class="dot-leg" style="background:var(--fatal)"></span>Fatal`;
-  }
-  lineChart('c-arc',series,{zero:!!arcState.zero});
-}
-const BOROCOL={'BRONX':'#c0502a','BROOKLYN':'#8a1e1a','MANHATTAN':'#e0a04a','QUEENS':'#2f6d8a','STATEN ISLAND':'#5b8a3a'};
-function drawBoroLines(){
-  const series=A.boro_year.map(b=>({color:BOROCOL[b.boro]||'#888',w:2.2,r:0,dots:false,
-    pts:b.series.map(s=>({x:s.year,y:s.n}))}));
-  lineChart('c-boro',series,{H:300,markers:false});
-  $('#boro-leg').innerHTML=A.boro_year.map(b=>`<span style="margin-right:14px"><span class="dot-leg" style="background:${BOROCOL[b.boro]}"></span>${cap(b.boro)}</span>`).join('');
-}
-function cap(s){return s.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' ');}
-function drawMonth(){vbars('c-month',A.by_month,{val:d=>d.n,label:d=>d.month[0],fmtVal:fmt,color:()=>'#c0502a'});}
-function drawDow(){vbars('c-dow',A.by_dow,{val:d=>d.n,label:d=>d.dow,fmtVal:fmt,color:d=>['Sat','Sun'].includes(d.dow)?'#8a1e1a':'#c0502a'});}
+function el(t,a,p){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function txt(p,x,y,s,cls,anc){const t=el('text',{x,y,class:cls||'lbl','text-anchor':anc||'start'},p);t.textContent=s;return t;}
+function nice(n){n=Math.round(n);return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':n;}
 function titleCase(s){return /^[A-Z][A-Z \/]+$/.test(s)?s.split(' ').map(w=>w[0]+w.slice(1).toLowerCase()).join(' '):s;}
-function drawDemo(id,data,col,W=360){
-  vbars(id,data,{val:d=>d.n,label:d=>{const t=titleCase(d.label);return t.length>16?t.slice(0,15)+'…':t;},fmtVal:fmt,
-    color:()=>col,W,H:W>360?220:200,horizontal:W>360,pad:W>360?[10,70,10,120]:[18,8,40,42],rotate:W<=360});
+
+let arcA='both',arcZero=1;
+function lineChart(id,series,{W=760,H=320,pad=[20,16,40,48],zero=true,fmtY=nice,markers=true,partials=[]}){
+  const s=svg(id);const[pt,pr,pb,pl]=pad;const pw=W-pl-pr,ph=H-pt-pb;
+  const ally=series.flatMap(se=>se.pts.map(p=>p.y)).filter(v=>v!=null);
+  let ymax=Math.max(...ally),ymin=zero?0:Math.min(...ally);const sp=ymax-ymin||1;ymax+=sp*.1;if(!zero)ymin=Math.max(0,ymin-sp*.1);
+  const xs=series[0].pts.map(p=>p.x),xmin=Math.min(...xs),xmax=Math.max(...xs);
+  const X=x=>pl+pw*(x-xmin)/((xmax-xmin)||1),Y=y=>pt+ph*(1-(y-ymin)/(ymax-ymin));
+  for(let i=0;i<=5;i++){const yv=ymin+(ymax-ymin)*i/5,yy=Y(yv);el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);txt(s,pl-8,yy+3,fmtY(yv),'axis','end');}
+  series[0].pts.forEach((p,i)=>{if(i%2===0||i===series[0].pts.length-1)txt(s,X(p.x),pt+ph+16,p.x,'axis','middle');});
+  partials.forEach(py=>{const pp=series[0].pts.find(p=>p.x===py);if(pp)el('line',{x1:X(py),y1:pt,x2:X(py),y2:pt+ph,stroke:'var(--ember)','stroke-dasharray':'2 3','stroke-opacity':.6},s);});
+  series.forEach((se,si)=>{const pts=se.pts.filter(p=>p.y!=null);
+    if(se.fill){const dd=el('defs',{},s);const g=el('linearGradient',{id:'g'+id+si,x1:0,y1:0,x2:0,y2:1},dd);el('stop',{offset:'0%','stop-color':se.color,'stop-opacity':.22},g);el('stop',{offset:'100%','stop-color':se.color,'stop-opacity':0},g);
+      el('path',{d:'M'+pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L ')+` L ${X(pts[pts.length-1].x)} ${Y(ymin)} L ${X(pts[0].x)} ${Y(ymin)} Z`,fill:`url(#g${id}${si})`},s);}
+    el('path',{d:'M'+pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L '),fill:'none',stroke:se.color,'stroke-width':se.w||2.6,'stroke-linejoin':'round','stroke-linecap':'round'},s);
+    if(markers&&se.dots!==false)pts.forEach(p=>{const c=el('circle',{cx:X(p.x),cy:Y(p.y),r:se.r||3,fill:'var(--paper)',stroke:se.color,'stroke-width':2},s);c.innerHTML=`<title>${p.x}: ${fmtY(p.y)}</title>`;});});
+  return{X,Y};
 }
-function drawFatalRate(){
-  const data=A.by_year.map(d=>({x:d.year,y:d.incidents?d.fatal/d.incidents*100:0}));
-  lineChart('c-fatalrate',[{color:'#8a1e1a',fill:true,fillOp:0.1,pts:data}],
-    {H:240,zero:true,fmtY:v=>v.toFixed(0)+'%'});
+function vbars(id,data,{val,label,color,fmtVal,W=360,H=200,pad=[16,8,36,40],rotate=false,horizontal=false}){
+  const s=svg(id);const[pt,pr,pb,pl]=pad;const pw=W-pl-pr,ph=H-pt-pb;const max=Math.max(...data.map(val))||1;
+  if(horizontal){const n=data.length,bh=ph/n*.66,gap=ph/n;
+    data.forEach((d,i)=>{const v=val(d),y=pt+gap*i+(gap-bh)/2,bw=pw*v/max;
+      el('rect',{x:pl,y,width:Math.max(1,bw),height:bh,rx:2,fill:color?color(d,i):'var(--ox)'},s).innerHTML=`<title>${label(d)}: ${fmtVal?fmtVal(v):fmt(v)}</title>`;
+      txt(s,pl-6,y+bh/2+4,label(d),'axis','end');txt(s,pl+bw+5,y+bh/2+4,fmtVal?fmtVal(v):fmt(v),'vlabel','start');});return;}
+  const n=data.length,bw=pw/n*.62,gap=pw/n;
+  for(let i=0;i<=3;i++){const yy=pt+ph-ph*i/3;el('line',{x1:pl,y1:yy,x2:W-pr,y2:yy,class:'gridline'},s);txt(s,pl-6,yy+3,nice(max*i/3),'axis','end');}
+  data.forEach((d,i)=>{const v=val(d),x=pl+gap*i+(gap-bw)/2,bh=ph*v/max,y=pt+ph-bh;
+    el('rect',{x,y,width:bw,height:Math.max(0,bh),rx:3,fill:color?color(d,i):'var(--ox)'},s).innerHTML=`<title>${label(d)}: ${fmtVal?fmtVal(v):fmt(v)}</title>`;
+    if(rotate){const tx=x+bw/2,ty=pt+ph+13;txt(s,tx,ty,label(d),'axis','end').setAttribute('transform',`rotate(-40 ${tx} ${ty})`);}
+    else txt(s,x+bw/2,pt+ph+15,label(d),'axis','middle');});
+}
+function spark(id,pts,col){const s=document.getElementById(id);const W=180,H=54,pad=6;
+  const ys=pts.map(p=>p.y),ymin=Math.min(...ys),ymax=Math.max(...ys),sp=ymax-ymin||1;
+  const xs=pts.map(p=>p.x),xmin=Math.min(...xs),xmax=Math.max(...xs);
+  const X=x=>pad+(W-2*pad)*(x-xmin)/((xmax-xmin)||1),Y=y=>pad+(H-2*pad)*(1-(y-ymin)/sp);
+  s.setAttribute('viewBox',`0 0 ${W} ${H}`);s.innerHTML='';
+  const dd=el('defs',{},s);const g=el('linearGradient',{id:'sg'+id,x1:0,y1:0,x2:0,y2:1},dd);el('stop',{offset:0,'stop-color':col,'stop-opacity':.25},g);el('stop',{offset:1,'stop-color':col,'stop-opacity':0},g);
+  el('path',{d:'M'+pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L ')+` L ${X(xmax)} ${H-pad} L ${X(xmin)} ${H-pad}Z`,fill:`url(#sg${id})`},s);
+  el('path',{d:'M'+pts.map(p=>X(p.x)+' '+Y(p.y)).join(' L '),fill:'none',stroke:col,'stroke-width':2,'stroke-linejoin':'round'},s);
+  el('circle',{cx:X(pts[pts.length-1].x),cy:Y(pts[pts.length-1].y),r:3,fill:col},s);
+}
+
+/* the arc */
+function drawArc(){
+  const d=A.by_year;let series;
+  if(arcA==='both'){series=[{color:'var(--ox)',fill:true,pts:d.map(x=>({x:x.year,y:x.incidents}))}];
+    $('#arc-leg').innerHTML='● all shooting incidents';}
+  else{series=[{color:'var(--nonfatal)',pts:d.map(x=>({x:x.year,y:x.incidents-x.fatal}))},{color:'var(--fatal)',fill:true,pts:d.map(x=>({x:x.year,y:x.fatal}))}];
+    $('#arc-leg').innerHTML='<span style="color:var(--nonfatal)">●</span> nonfatal &nbsp; <span style="color:var(--fatal)">●</span> fatal';}
+  lineChart('c-arc',series,{zero:!!arcZero,partials:[2026]});
+}
+
+/* what-changed cards */
+function drawChangeCards(){
+  const by=A.by_year;
+  const vmid=A.victim_age_trend['25-44'];
+  const f06=vmid[0].share,f25=vmid[vmid.length-2].share;
+  const night06=by[0].night_share,night25=by[by.length-2].night_share;
+  // geographic: bronx share of shootings, early vs recent (sum precinct shares by boro via precinct_changes? use by boro)
+  const bx=A.boro_year.find(b=>b.boro==='BRONX').series, bk=A.boro_year.find(b=>b.boro==='BROOKLYN').series;
+  function shareSeries(ser){return ser.map((s,i)=>({x:s.year,y:by[i].incidents?100*s.n/by[i].incidents:0}));}
+  const bxs=shareSeries(bx);const bxEarly=avg(bxs.slice(0,5).map(p=>p.y)),bxLate=avg(bxs.slice(-6,-1).map(p=>p.y));
+  const cards=[
+    {tag:'The victims got older',line:`<span class="from">39%</span> <span class="arrow">→</span> 50%`,
+     p:'Share of victims aged 25–44 climbed about ten points. Gun violence skewed less toward teenagers and young adults over the two decades.',
+     spark:'sp1',col:'var(--ox)',pts:vmid.map(v=>({x:v.year,y:v.share}))},
+    {tag:'It moved into daylight',line:`<span class="from">58%</span> <span class="arrow">→</span> 47%`,
+     p:'The share of shootings in the late-night window (8pm–4am) fell more than ten points — a real shift in when violence happens.',
+     spark:'sp2',col:'var(--ember)',pts:by.map(v=>({x:v.year,y:v.night_share}))},
+    {tag:'It shifted toward the Bronx',line:`<span class="from">${bxEarly.toFixed(0)}%</span> <span class="arrow">→</span> ${bxLate.toFixed(0)}%`,
+     p:"The Bronx's share of all city shootings rose as Brooklyn's fell — the map's center of gravity drifted north.",
+     spark:'sp3',col:'var(--ox2)',pts:bxs}
+  ];
+  $('#change-cards').innerHTML=cards.map(c=>`<div class="cc"><h4>${c.tag}</h4><div class="stat-line serif">${c.line}</div><p>${c.p}</p><svg id="${c.spark}"></svg></div>`).join('');
+  cards.forEach(c=>spark(c.spark,c.pts,c.col));
+}
+function avg(a){return a.reduce((s,x)=>s+x,0)/a.length;}
+
+/* SMALL MULTIPLES */
+function buildSmallMultiples(){
+  const yrs=A.meta.years.filter(y=>y<=2025);
+  const paths=A.precinct_paths,vw=A.meta.view_w,vh=A.meta.view_h;
+  // shared scale
+  let maxCount=0,maxShare=0;
+  A.precinct.forEach(p=>{for(const y in p.yr){maxCount=Math.max(maxCount,p.yr[y]);const cy=A.by_year.find(b=>b.year==+y);if(cy&&cy.incidents)maxShare=Math.max(maxShare,p.yr[y]/cy.incidents);}});
+  const max=smMode==='count'?maxCount:maxShare;
+  const cityByYear={};A.by_year.forEach(b=>cityByYear[b.year]=b.incidents);
+  const peakYr=A.by_year.reduce((x,y)=>y.incidents>x.incidents?y:x).year;
+  function col(v){if(v<=0)return 'var(--m0)';const t=Math.pow(v/max,0.6);const i=Math.min(5,Math.floor(t*6));return MAP_RAMP[i];}
+  $('#sm-grid').innerHTML=yrs.map(y=>{
+    const total=cityByYear[y];
+    let svgInner='';
+    A.precinct.forEach(p=>{const d=paths[String(p.precinct)];if(!d)return;
+      const cnt=p.yr[String(y)]||0;const v=smMode==='count'?cnt:(total?cnt/total:0);
+      svgInner+=`<path d="${d}" fill="${col(v)}" stroke="#fff" stroke-width="0.5"/>`;});
+    return `<div class="sm ${y===peakYr?'peak':''}"><svg viewBox="0 0 ${vw} ${vh}">${svgInner}</svg><span class="yr">${y}</span><span class="ct">${fmt(total)}</span></div>`;
+  }).join('');
+  // legend
+  $('#sm-legend').innerHTML='fewer '+MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')+' more'+(smMode==='share'?' · share of that year’s citywide total':' · shootings per precinct');
+}
+
+/* RANKINGS */
+function drawRankings(mode){
+  const pc=A.precinct_changes;const boroOf={};A.precinct.forEach(p=>{});
+  function boroTag(c){return '';}
+  let t1,c1,list1,t2,c2,list2,note;
+  if(mode==='share'){
+    const sorted=pc.slice().sort((a,b)=>b.share_change-a.share_change);
+    t1='Gained share of city shootings';c1='2021–25 vs 2015–19 · percentage-point change';
+    list1=sorted.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.share_change,disp:'+'+c.share_change.toFixed(2)+'pp',pos:true}));
+    t2='Lost share of city shootings';c2='2021–25 vs 2015–19 · percentage-point change';
+    list2=sorted.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,v:c.share_change,disp:c.share_change.toFixed(2)+'pp',pos:false}));
+    note='Share of the citywide total — not raw counts. The Bronx (East Tremont, Mott Haven, Wakefield) gained ground as Brooklyn strongholds (East Flatbush, Bed-Stuy) receded, even though shootings fell across nearly all of them.';
+  }else if(mode==='spike'){
+    const f=pc.filter(c=>c.pandemic_pct!=null).sort((a,b)=>b.pandemic_pct-a.pandemic_pct);
+    t1='Sharpest pandemic spikes';c1='2020–21 vs 2018–19 · percent change in shootings';
+    list1=f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.pandemic_pct,disp:'+'+c.pandemic_pct.toFixed(0)+'%',pos:true}));
+    t2='Held steadiest';c2='2020–21 vs 2018–19 · smallest change';
+    list2=f.slice().sort((a,b)=>Math.abs(a.pandemic_pct)-Math.abs(b.pandemic_pct)).slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.pandemic_pct,disp:(c.pandemic_pct>=0?'+':'')+c.pandemic_pct.toFixed(0)+'%',pos:c.pandemic_pct>=0}));
+    note='The 2020–21 surge was not uniform. It hit hardest in pockets of the Bronx, Harlem and the Rockaways, more than doubling shootings in the worst-affected precincts.';
+  }else{
+    const f=pc.filter(c=>c.decline_pct!=null).sort((a,b)=>a.decline_pct-b.decline_pct);
+    t1='Biggest declines since the peak';c1='2023–25 vs 2020–21 · percent change';
+    list1=f.slice(0,8).map(c=>({name:c.name,prec:c.precinct,v:c.decline_pct,disp:c.decline_pct.toFixed(0)+'%',pos:false}));
+    t2='Slowest to recover';c2='2023–25 vs 2020–21 · smallest decline';
+    list2=f.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,v:c.decline_pct,disp:c.decline_pct.toFixed(0)+'%',pos:false}));
+    note='Nearly every precinct is down from the 2020–21 peak, but Southeast Queens — Queens Village, St. Albans, Jamaica — saw the fastest turnaround, cutting shootings by roughly two-thirds.';
+  }
+  renderRank('rank-1','rank-t1','rank-c1',t1,c1,list1);
+  renderRank('rank-2','rank-t2','rank-c2',t2,c2,list2);
+  $('#rank-note').textContent=note;
+}
+function renderRank(id,tid,cid,title,cap,list){
+  $('#'+tid).textContent=title;$('#'+cid).textContent=cap;
+  const max=Math.max(...list.map(x=>Math.abs(x.v)))||1;
+  $('#'+id).innerHTML=list.map((x,i)=>{
+    const w=Math.abs(x.v)/max*100;const col=x.pos?'var(--pos)':'var(--neg)';
+    return `<div class="rk"><div class="pos">${i+1}</div>
+      <div class="nm">${x.name}<span>${x.prec}${pctSuffix(x.prec)} pct</span></div>
+      <div class="track"><div class="fill" style="width:${w}%;background:${col};opacity:.78"></div></div>
+      <div class="vv" style="color:${col}">${x.disp}</div></div>`;}).join('');
+}
+function pctSuffix(p){const s=['th','st','nd','rd'],v=p%100;return s[(v-20)%10]||s[v]||s[0];}
+
+/* WHO */
+function drawWho(){
+  vbars('c-vage',A.victim_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:150,rotate:true,pad:[12,8,34,36],color:()=>'var(--ox)'});
+  vbars('c-vsex',A.victim_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:110,horizontal:true,pad:[6,54,6,70],color:()=>'var(--ox)'});
+  vbars('c-vrace',A.victim_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:360,H:180,horizontal:true,pad:[6,54,6,118],color:()=>'var(--ox)'});
+  vbars('c-oage',A.offender_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:150,rotate:true,pad:[12,8,34,36],color:()=>'var(--ink2)'});
+  vbars('c-osex',A.offender_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:110,horizontal:true,pad:[6,54,6,70],color:()=>'var(--ink2)'});
+  vbars('c-orace',A.offender_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:360,H:180,horizontal:true,pad:[6,54,6,118],color:()=>'var(--ink2)'});
 }
 function drawHeat(){
-  const s=svg('c-heat');const W=720,H=230;const padTop=8,padBot=24,padL=44,padR=12;
-  const cellW=(W-padL-padR)/24,cellH=(H-padTop-padBot)/7;
-  const max=Math.max(...A.hour_dow.map(d=>d.n));
-  const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const heatCol=v=>{const t=v/max;const stops=['#f7e9c8','#f0c073','#e08a3c','#c0502a','#8a1e1a','#4a0d12'];
-    const i=Math.min(stops.length-1,Math.floor(t*stops.length));return v===0?'#f4f6f8':stops[i];};
+  const s=svg('c-heat');const W=760,H=240,padTop=8,padBot=26,padL=46,padR=14;
+  const cellW=(W-padL-padR)/24,cellH=(H-padTop-padBot)/7;const max=Math.max(...A.hour_dow.map(d=>d.n));
+  const DOWn=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const hc=v=>{if(v===0)return 'var(--m0)';const t=Math.pow(v/max,.7);return MAP_RAMP[Math.min(5,Math.floor(t*6))];};
   A.hour_dow.forEach(d=>{const x=padL+d.hour*cellW,y=padTop+d.dow*cellH;
-    const r=el('rect',{x,y,width:cellW-1,height:cellH-1,rx:2,fill:heatCol(d.n)},s);
-    r.innerHTML=`<title>${DOW[d.dow]} ${String(d.hour).padStart(2,'0')}:00 — ${fmt(d.n)} shootings</title>`;});
-  DOW.forEach((d,i)=>text(s,padL-7,padTop+i*cellH+cellH/2+4,d,'axis','end'));
-  for(let h=0;h<24;h+=3)text(s,padL+h*cellW+cellW/2,H-8,String(h),'axis','middle');
-  text(s,padL,H-8,'',''); // noop
+    el('rect',{x,y,width:cellW-1.5,height:cellH-1.5,rx:2,fill:hc(d.n)},s).innerHTML=`<title>${DOWn[d.dow]} ${String(d.hour).padStart(2,'0')}:00 — ${fmt(d.n)}</title>`;});
+  DOWn.forEach((d,i)=>txt(s,padL-8,padTop+i*cellH+cellH/2+4,d,'axis','end'));
+  for(let h=0;h<24;h+=3)txt(s,padL+h*cellW+cellW/2,H-8,String(h),'axis','middle');
 }
+function drawMonth(){vbars('c-month',A.by_month,{val:d=>d.n,label:d=>d.month[0],fmtVal:fmt,color:()=>'var(--ox)'});}
+function drawDow(){vbars('c-dow',A.by_dow,{val:d=>d.n,label:d=>d.dow,fmtVal:fmt,color:d=>['Sat','Sun'].includes(d.dow)?'var(--fatal)':'var(--ox)'});}
 
-/* ---------- map ---------- */
+/* INTERACTIVE MAP */
 function buildMap(){
   map=L.map('map',{scrollWheelZoom:false,preferCanvas:true}).setView([40.70,-73.92],11);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
-  // precinct lookup
-  precIndex={};A.precinct.forEach(p=>precIndex[String(p.precinct)]=p);
-  choLayer=L.geoJSON(geo,{style:choStyle,onEachFeature:(f,l)=>{
-    l.on('mouseover',()=>l.setStyle({weight:2,color:'#13161c'}));
-    l.on('mouseout',()=>choLayer.resetStyle(l));
-    l.bindPopup(()=>precPopup(f));
-  }});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19}).addTo(map);
+  A.precinct.forEach(p=>precIndex[String(p.precinct)]=p);
+  choLayer=L.geoJSON(geo,{style:choStyle,onEachFeature:(f,l)=>{l.on('mouseover',()=>l.setStyle({weight:2,color:'#1c1814'}));l.on('mouseout',()=>choLayer.resetStyle(l));l.bindPopup(()=>precPopup(f));}});
   ptLayer=L.layerGroup();
-  const lg=L.control({position:'bottomright'});
-  lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.id='legend';return d;};
-  lg.addTo(map);
+  const lg=L.control({position:'bottomright'});lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.id='legend';return d;};lg.addTo(map);
   renderMap();
 }
-let precIndex={};
-function precCount(p){
-  if(!p)return 0;
-  if(mstate.fatal){ // fatal share approximated by overall fatal ratio per precinct applied to year? Use total-year * (fatal/total)
-    if(mstate.year===0)return p.fatal;
-    const yr=p.yr&&p.yr[String(mstate.year)]||0;
-    const ratio=p.total?p.fatal/p.total:0;return Math.round(yr*ratio);
-  }
-  if(mstate.year===0)return p.total;
-  return (p.yr&&p.yr[String(mstate.year)])||0;
-}
 let choMax=1;
-function computeChoMax(){choMax=Math.max(1,...A.precinct.map(p=>precCount(p)));}
-const CHO_STOPS=['#fbeede','#f4cf94','#e8a45a','#d4703a','#b0432a','#7a1518'];
-function choColor(v){if(v===0)return '#eef1f4';const t=v/choMax;const i=Math.min(CHO_STOPS.length-1,Math.floor(Math.pow(t,0.6)*CHO_STOPS.length));return CHO_STOPS[i];}
-function choStyle(f){const p=precIndex[String(f.properties.precinct)];const v=precCount(p);
-  return {fillColor:choColor(v),fillOpacity:0.82,color:'#fff',weight:0.8};}
-function precPopup(f){const p=precIndex[String(f.properties.precinct)];const v=precCount(p);
-  const yr=mstate.year===0?'all years':mstate.year;
-  return `<div class="pop"><h4>${f.properties.precinct}th Precinct</h4>
-    <div class="pr"><span>Shootings (${yr})</span><b class="num">${fmt(v)}</b></div>
-    <div class="pr"><span>All-time total</span><b class="num">${fmt(p?p.total:0)}</b></div>
-    <div class="pr"><span>All-time fatal</span><b class="num">${fmt(p?p.fatal:0)}</b></div></div>`;
-}
+function precCount(p){if(!p)return 0;if(mstate.year===0)return mstate.fatal?p.fatal:p.total;const yr=(p.yr&&p.yr[String(mstate.year)])||0;if(mstate.fatal){const ratio=p.total?p.fatal/p.total:0;return Math.round(yr*ratio);}return yr;}
+function computeMax(){choMax=Math.max(1,...A.precinct.map(precCount));}
+function choColor(v){if(v===0)return '#f1ebdd';const t=Math.pow(v/choMax,.6);return MAP_RAMP[Math.min(5,Math.floor(t*6))];}
+function choStyle(f){return {fillColor:choColor(precCount(precIndex[String(f.properties.precinct)])),fillOpacity:.82,color:'#fff',weight:.7};}
+function precPopup(f){const p=precIndex[String(f.properties.precinct)];const v=precCount(p);const nm=p?p.name:'';
+  return `<div class="pop"><h4>${f.properties.precinct}${pctSuffix(+f.properties.precinct)} Precinct</h4><div class="meta">${nm}</div>
+    <div class="pr"><span>Shootings (${mstate.year===0?'all years':mstate.year})</span><b>${fmt(v)}</b></div>
+    <div class="pr"><span>All-time total</span><b>${fmt(p?p.total:0)}</b></div>
+    <div class="pr"><span>All-time fatal</span><b>${fmt(p?p.fatal:0)}</b></div></div>`;}
 function renderMap(){
-  // mode visibility
-  if(mstate.mode==='choro'){
-    if(map.hasLayer(ptLayer))map.removeLayer(ptLayer);
-    computeChoMax();
-    if(!map.hasLayer(choLayer))choLayer.addTo(map);
-    choLayer.setStyle(choStyle);
-    legendCho();
-    $('#mapNote').textContent='Precinct totals are raw counts, not adjusted for population. 2026 covers January through March only.';
-  }else{
-    if(map.hasLayer(choLayer))map.removeLayer(choLayer);
-    renderPoints();
-    if(!map.hasLayer(ptLayer))ptLayer.addTo(map);
-    legendPts();
-    $('#mapNote').textContent='Each dot is one shooting incident'+(mstate.year?` in ${mstate.year}`:'')+'. Pan and zoom to explore; coordinates are NYPD-geocoded to the block.';
-  }
-  updateYearLabel();
-}
-function renderPoints(){
-  ptLayer.clearLayers();
-  const yr=mstate.year, onlyFatal=mstate.fatal;
-  let n=0;
-  P.points.forEach(p=>{
-    const [lat,lon,py,bi,fatal]=p;
-    if(yr&&py!==yr)return;
-    if(onlyFatal&&!fatal)return;
-    n++;
-    L.circleMarker([lat,lon],{radius:fatal?3.2:2.2,stroke:false,
-      fillColor:fatal?'#7a1518':'#d4703a',fillOpacity:fatal?0.85:0.5,renderer:map.getRenderer(ptLayer)}).addTo(ptLayer);
-  });
-  $('#yCount').textContent=fmt(n)+(onlyFatal?' fatal':'')+' shootings shown';
-}
-function updateYearLabel(){
   $('#yLabel').textContent=mstate.year===0?'All years':mstate.year;
-  if(mstate.mode==='choro'){
-    let tot=0;A.precinct.forEach(p=>tot+=precCount(p));
-    $('#yCount').textContent=fmt(tot)+(mstate.fatal?' fatal':'')+' shootings';
-  }
+  if(mstate.mode==='choro'){if(map.hasLayer(ptLayer))map.removeLayer(ptLayer);computeMax();if(!map.hasLayer(choLayer))choLayer.addTo(map);choLayer.setStyle(choStyle);legendCho();
+    let tot=0;A.precinct.forEach(p=>tot+=precCount(p));$('#yCount').textContent=fmt(tot)+(mstate.fatal?' fatal':'')+' shootings';
+    $('#mapNote').textContent='Precinct totals are raw counts, not population-adjusted. 2026 covers January–March only.';}
+  else{if(map.hasLayer(choLayer))map.removeLayer(choLayer);renderPoints();if(!map.hasLayer(ptLayer))ptLayer.addTo(map);legendPts();
+    $('#mapNote').textContent='Each dot is one shooting incident'+(mstate.year?` in ${mstate.year}`:'')+'.';}
 }
-function legendCho(){const el=document.getElementById('legend');if(!el)return;
-  el.innerHTML=`<b>Shootings${mstate.fatal?' (fatal)':''}${mstate.year?' · '+mstate.year:''}</b>
-    <div class="scale">${CHO_STOPS.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div>
-    <div class="ticks"><span>low</span><span>${fmt(choMax)}</span></div>`;}
-function legendPts(){const el=document.getElementById('legend');if(!el)return;
-  el.innerHTML=`<b>Each dot = 1 shooting</b>
-    <div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#d4703a;display:inline-block"></span>Nonfatal</div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="width:10px;height:10px;border-radius:50%;background:#7a1518;display:inline-block"></span>Fatal</div>`;}
-
-/* play through years */
+function renderPoints(){ptLayer.clearLayers();let n=0;P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;n++;
+  L.circleMarker([lat,lon],{radius:fatal?3.2:2.1,stroke:false,fillColor:fatal?'#6e1414':'#cf6f35',fillOpacity:fatal?.85:.5,renderer:map.getRenderer(ptLayer)}).addTo(ptLayer);});
+  $('#yCount').textContent=fmt(n)+(mstate.fatal?' fatal':'')+' shootings shown';}
+function legendCho(){const e=document.getElementById('legend');if(!e)return;e.innerHTML=`<b>Shootings${mstate.fatal?' (fatal)':''}${mstate.year?' · '+mstate.year:''}</b><div class="scale">${MAP_RAMP.map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div><div class="ticks"><span>0</span><span>${fmt(choMax)}</span></div>`;}
+function legendPts(){const e=document.getElementById('legend');if(!e)return;e.innerHTML=`<b>Each dot = 1 shooting</b><div style="display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#cf6f35;display:inline-block"></span>Nonfatal</div><div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="width:9px;height:9px;border-radius:50%;background:#6e1414;display:inline-block"></span>Fatal</div>`;}
 let playTimer=null;
-function togglePlay(){
-  if(playTimer){clearInterval(playTimer);playTimer=null;$('#playBtn').textContent='▶';return;}
-  $('#playBtn').textContent='⏸';
-  let y=2006;
-  const sl=$('#yearSlider');
-  mstate.year=y;sl.value=y;updateYearLabel();renderMap();
-  playTimer=setInterval(()=>{
-    y++;
-    if(y>2026){clearInterval(playTimer);playTimer=null;$('#playBtn').textContent='▶';return;}
-    mstate.year=y;sl.value=y;updateYearLabel();renderMap();
-  },900);
-}
+function togglePlay(){if(playTimer){clearInterval(playTimer);playTimer=null;$('#playBtn').textContent='▶';return;}
+  $('#playBtn').textContent='⏸';let y=2006;const sl=$('#yearSlider');mstate.year=y;sl.value=y;renderMap();
+  playTimer=setInterval(()=>{y++;if(y>2026){clearInterval(playTimer);playTimer=null;$('#playBtn').textContent='▶';return;}mstate.year=y;sl.value=y;renderMap();},850);}
 </script>
 </body>
 </html>

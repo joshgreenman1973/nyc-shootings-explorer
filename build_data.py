@@ -1,48 +1,73 @@
 #!/usr/bin/env python3
 """
-NYC shootings data pipeline (2006-present).
+NYC shootings data pipeline v2 (2006-present) — trends-over-time edition.
 
-Sources (NYC Open Data / Socrata), the new three-table collection published
-2026-02-10:
-  - Shootings:          5ucz-vwe8  (incident-level: date, time, boro, precinct, lat/lon)
-  - Shooting Victims:   pztn-9bne  (one row per victim, joined by incident_key)
-  - Shooting Offenders: gdk4-mbsv  (one row per offender, joined by incident_key)
+Sources (NYC Open Data / Socrata), the three-table collection published 2026-02-10:
+  - Shootings:          5ucz-vwe8  (incident-level)
+  - Shooting Victims:   pztn-9bne  (one row per victim)
+  - Shooting Offenders: gdk4-mbsv  (one row per offender)
+  - Police Precincts:   y76i-bdw7  (shoreline-clipped boundaries)
 
-Also fetches NYPD precinct boundaries (shoreline-clipped, City Planning) for the
-choropleth: 78dh-3ptz.
+This version adds everything needed to show how patterns CHANGED over the years
+rather than only the all-time totals:
+  * Demographics BY YEAR (victim + offender age/sex/race shares) so shifts show.
+  * Precinct ("neighborhood") change analysis: share of citywide shootings in a
+    pre-pandemic window vs a recent window, the biggest pandemic spikes, and the
+    biggest declines.
+  * Simplified, projected SVG outlines per precinct so the front end can draw a
+    small-multiples grid (one mini-map per year) with no map tiles at all.
 
-Outputs (all in data/):
-  shootings_agg.json    aggregates for all charts
-  shootings_points.json compact incident points for the map [lat,lon,year,boroIdx,fatal]
-  precincts.geojson     precinct polygons
+Outputs (data/):
+  shootings_agg.json    everything for charts + change tables + precinct shapes
+  shootings_points.json compact incident points for the optional dot map
+  precincts.geojson     full-resolution polygons for the interactive Leaflet map
 
-Confidence: HIGH for counts by year/boro/precinct and victim demographics
-(directly from published records). Incident "fatal" = at least one victim with
-the statistical-murder flag set. ~1.6% of incidents lack lat/lon and are
-excluded from the map only (still counted in all charts).
+Confidence: HIGH for counts/geography/victim demographics; MEDIUM for offender
+demographics (identified-suspect subset). Neighborhood labels are approximate
+precinct nicknames for readability, not official boundaries.
 """
-import json, urllib.request, urllib.parse, datetime, collections, os, sys
+import json, urllib.request, urllib.parse, datetime, collections, os, sys, math
 
 DOMAIN = "https://data.cityofnewyork.us/resource"
 GEO = "https://data.cityofnewyork.us/api/geospatial"
-INCIDENTS = "5ucz-vwe8"
-VICTIMS = "pztn-9bne"
-OFFENDERS = "gdk4-mbsv"
-PRECINCTS = "y76i-bdw7"
+INCIDENTS, VICTIMS, OFFENDERS, PRECINCTS = "5ucz-vwe8", "pztn-9bne", "gdk4-mbsv", "y76i-bdw7"
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data")
 
+# Approximate precinct -> neighborhood labels (for readability).
+PRECINCT_NAME = {
+    1: "Financial District", 5: "Chinatown", 6: "West Village", 7: "Lower East Side",
+    9: "East Village", 10: "Chelsea", 13: "Gramercy", 14: "Midtown South",
+    17: "Murray Hill", 18: "Midtown North", 19: "Upper East Side", 20: "Upper West Side",
+    22: "Central Park", 23: "East Harlem", 24: "UWS North", 25: "East Harlem North",
+    26: "Morningside Hts", 28: "Central Harlem S", 30: "Hamilton Heights",
+    32: "Central Harlem N", 33: "Washington Hts", 34: "Wash. Hts / Inwood",
+    40: "Mott Haven", 41: "Hunts Point", 42: "Morrisania", 43: "Soundview",
+    44: "Highbridge", 45: "Throgs Neck", 46: "Fordham", 47: "Wakefield",
+    48: "East Tremont", 49: "Pelham Parkway", 50: "Kingsbridge", 52: "Bedford Park",
+    60: "Coney Island", 61: "Sheepshead Bay", 62: "Bensonhurst", 63: "Marine Park",
+    66: "Borough Park", 67: "East Flatbush", 68: "Bay Ridge", 69: "Canarsie",
+    70: "Flatbush", 71: "Crown Heights S", 72: "Sunset Park", 73: "Brownsville",
+    75: "East New York", 76: "Red Hook", 77: "Crown Heights", 78: "Park Slope",
+    79: "Bed-Stuy South", 81: "Bed-Stuy North", 83: "Bushwick", 84: "Downtown Bklyn",
+    88: "Fort Greene", 90: "Williamsburg S", 94: "Greenpoint", 100: "Rockaways",
+    101: "Far Rockaway", 102: "Richmond Hill", 103: "Jamaica", 104: "Ridgewood",
+    105: "Queens Village", 106: "Ozone Park", 107: "Fresh Meadows",
+    108: "Long Island City", 109: "Flushing", 110: "Elmhurst", 111: "Bayside",
+    112: "Forest Hills", 113: "St. Albans", 114: "Astoria", 115: "Jackson Heights",
+    116: "Rosedale", 120: "St. George", 121: "Mariners Harbor", 122: "New Dorp",
+    123: "Tottenville",
+}
 
-def fetch_all(dataset, select=None, order=None):
+
+def fetch_all(dataset, order=None):
     rows, offset, page = [], 0, 50000
     while True:
         params = {"$limit": page, "$offset": offset}
-        if select:
-            params["$select"] = select
         if order:
             params["$order"] = order
         url = f"{DOMAIN}/{dataset}.json?" + urllib.parse.urlencode(params)
-        req = urllib.request.Request(url, headers={"User-Agent": "shootings-build/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "shootings-build/2.0"})
         with urllib.request.urlopen(req, timeout=180) as r:
             batch = json.load(r)
         rows.extend(batch)
@@ -61,18 +86,31 @@ def num(x):
 
 BOROS = ["BRONX", "BROOKLYN", "MANHATTAN", "QUEENS", "STATEN ISLAND"]
 BORO_IDX = {b: i for i, b in enumerate(BOROS)}
+VALID_AGE = ["<18", "18-24", "25-44", "45-64", "65+"]
+SEX_MAP = {"MALE": "Male", "M": "Male", "FEMALE": "Female", "F": "Female"}
 
-print("Fetching incidents...", file=sys.stderr)
+
+def clean_age(v):
+    v = (v or "").strip().upper()
+    return v if v in VALID_AGE else "Unknown"
+
+
+def clean_sex(v):
+    return SEX_MAP.get((v or "").strip().upper(), "Unknown")
+
+
+def clean_race(v):
+    return (v or "").strip().upper() or "UNKNOWN"
+
+
+print("Fetching incidents / victims / offenders...", file=sys.stderr)
 incidents = fetch_all(INCIDENTS, order="occur_date")
-print(f"  {len(incidents)} incidents", file=sys.stderr)
-print("Fetching victims...", file=sys.stderr)
 victims = fetch_all(VICTIMS)
-print(f"  {len(victims)} victims", file=sys.stderr)
-print("Fetching offenders...", file=sys.stderr)
 offenders = fetch_all(OFFENDERS)
-print(f"  {len(offenders)} offenders", file=sys.stderr)
+print(f"  {len(incidents)} / {len(victims)} / {len(offenders)}", file=sys.stderr)
 
-# --- incident -> fatal? (any victim flagged statistical murder) ---
+# incident -> year, boro, precinct, fatal
+inc_year, inc_meta = {}, {}
 fatal_incident = set()
 victims_by_incident = collections.Counter()
 for v in victims:
@@ -81,31 +119,30 @@ for v in victims:
     if (v.get("stat_murder_flg") or "").strip().upper() == "Y":
         fatal_incident.add(k)
 
-# --- aggregators ---
+# aggregators
 by_year = collections.Counter()
 by_year_fatal = collections.Counter()
 victims_by_year = collections.Counter()
 victims_by_year_fatal = collections.Counter()
 by_yearmonth = collections.Counter()
-by_month = collections.Counter()            # seasonality (calendar month)
-by_dow = collections.Counter()              # 0=Mon
+by_month = collections.Counter()
+by_dow = collections.Counter()
 by_hour = collections.Counter()
-hour_dow = collections.Counter()            # (dow, hour) heatmap
-boro_year = collections.defaultdict(collections.Counter)   # boro -> year -> count
+hour_dow = collections.Counter()
+# night share over time: share of shootings 8pm-4am
+night_by_year = collections.Counter()
+boro_year = collections.defaultdict(collections.Counter)
+precinct_year = collections.defaultdict(collections.Counter)
 precinct_total = collections.Counter()
 precinct_fatal = collections.Counter()
-precinct_recent = collections.Counter()     # last 3 full years (2023-2025)
-precinct_year = collections.defaultdict(collections.Counter)  # precinct -> year -> count
-loc_class = collections.Counter()
 points = []
 n_no_geo = 0
 
-DOW_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 for r in incidents:
-    d = r.get("occur_date", "")[:10]
+    d = (r.get("occur_date") or "")[:10]
     if not d:
         continue
     try:
@@ -114,35 +151,33 @@ for r in incidents:
         continue
     key = r.get("incident_key")
     fatal = key in fatal_incident
-    yr = dt.year
+    yr, mo, dow = dt.year, dt.month, dt.weekday()
     boro = (r.get("boro") or "").strip().upper()
     prec = r.get("precinct")
-    nvic = max(1, victims_by_incident.get(key, 1))
+    try:
+        prec = int(prec)
+    except (TypeError, ValueError):
+        prec = None
+    inc_year[key] = yr
 
     by_year[yr] += 1
     if fatal:
         by_year_fatal[yr] += 1
-    victims_by_year[yr] += nvic
-    by_yearmonth[f"{yr:04d}-{dt.month:02d}"] += 1
-    by_month[dt.month] += 1
-    dow = dt.weekday()
+    nv = max(1, victims_by_incident.get(key, 1))
+    victims_by_year[yr] += nv
+    by_yearmonth[f"{yr:04d}-{mo:02d}"] += 1
+    by_month[mo] += 1
     by_dow[dow] += 1
     boro_year[boro][yr] += 1
-    if prec:
+    if prec is not None:
+        precinct_year[prec][yr] += 1
         precinct_total[prec] += 1
         if fatal:
             precinct_fatal[prec] += 1
-        if yr >= 2023 and yr <= 2025:
-            precinct_recent[prec] += 1
-        precinct_year[prec][yr] += 1
-    lc = (r.get("loc_classfctn_desc") or r.get("location_desc") or "").strip()
-    if lc:
-        loc_class[lc] += 1
 
-    # time of day
     t = (r.get("occur_time") or "")
     hr = None
-    if t and ":" in t:
+    if ":" in t:
         try:
             hr = int(t.split(":")[0])
         except ValueError:
@@ -150,116 +185,232 @@ for r in incidents:
     if hr is not None and 0 <= hr <= 23:
         by_hour[hr] += 1
         hour_dow[(dow, hr)] += 1
+        if hr >= 20 or hr < 4:
+            night_by_year[yr] += 1
 
-    # NOTE: this dataset has latitude/longitude column labels SWAPPED at the
-    # source (the "latitude" field holds ~-73.9, "longitude" holds ~40.6).
-    # We read them in the corrected orientation.
-    lat, lon = num(r.get("longitude")), num(r.get("latitude"))
+    lat, lon = num(r.get("longitude")), num(r.get("latitude"))   # NOTE: source columns swapped
     if lat is None or lon is None or not (40.4 < lat < 41.0) or not (-74.3 < lon < -73.6):
         n_no_geo += 1
     else:
-        points.append([round(lat, 5), round(lon, 5), yr,
-                       BORO_IDX.get(boro, -1), 1 if fatal else 0])
+        points.append([round(lat, 5), round(lon, 5), yr, BORO_IDX.get(boro, -1), 1 if fatal else 0])
 
-# victim-level fatal counts by year
+# victim fatal counts by year
 for v in victims:
-    k = v.get("incident_key")
-    # find incident year via a lookup map
-# Build incident-year map once
-inc_year = {}
-for r in incidents:
-    d = r.get("occur_date", "")[:10]
-    if d:
-        try:
-            inc_year[r.get("incident_key")] = datetime.date.fromisoformat(d).year
-        except ValueError:
-            pass
-for v in victims:
-    k = v.get("incident_key")
-    y = inc_year.get(k)
+    y = inc_year.get(v.get("incident_key"))
     if y is None:
         continue
     if (v.get("stat_murder_flg") or "").strip().upper() == "Y":
         victims_by_year_fatal[y] += 1
 
+years = sorted(by_year)
+RECENT = [y for y in years if y <= 2025]  # exclude partial 2026 from "recent" windows
 
-VALID_AGE = {"<18", "18-24", "25-44", "45-64", "65+"}
-SEX_MAP = {"MALE": "Male", "M": "Male", "FEMALE": "Female", "F": "Female"}
-
-
-def demo(rows, age_f, sex_f, race_f):
-    age = collections.Counter()
-    sex = collections.Counter()
-    race = collections.Counter()
+# ---------- demographics by year (shares) ----------
+def demo_by_year(rows, age_f, sex_f, race_f):
+    age = collections.defaultdict(collections.Counter)   # year -> agebucket -> n
+    race = collections.defaultdict(collections.Counter)
+    tot = collections.Counter()
     for r in rows:
-        a = (r.get(age_f) or "").strip().upper()
-        a = a if a in VALID_AGE else "Unknown"   # drop junk ages (1022, 1822, blanks)
-        s = SEX_MAP.get((r.get(sex_f) or "").strip().upper(), "Unknown")
-        rc = (r.get(race_f) or "").strip() or "UNKNOWN"
-        age[a] += 1
-        sex[s] += 1
-        race[rc] += 1
+        y = inc_year.get(r.get("incident_key"))
+        if y is None:
+            continue
+        age[y][clean_age(r.get(age_f))] += 1
+        race[y][clean_race(r.get(race_f))] += 1
+        tot[y] += 1
+    return age, race, tot
+
+v_age_y, v_race_y, v_tot_y = demo_by_year(victims, "victim_age_group", "victim_sex", "victim_race")
+o_age_y, o_race_y, o_tot_y = demo_by_year(offenders, "perp_age_group", "perp_sex", "perp_race")
+
+def share_series(age_y, tot_y, buckets):
+    # returns {bucket: [{year, share, n}]}
+    out = {}
+    for b in buckets:
+        out[b] = [{"year": y, "n": age_y[y].get(b, 0),
+                   "share": round(100 * age_y[y].get(b, 0) / tot_y[y], 1) if tot_y[y] else None}
+                  for y in years]
+    return out
+
+TOP_RACES = ["BLACK", "WHITE HISPANIC", "BLACK HISPANIC", "WHITE", "ASIAN / PACIFIC ISLANDER"]
+
+# all-time demographic totals (cleaned)
+def totals(rows, age_f, sex_f, race_f):
+    age, sex, race = collections.Counter(), collections.Counter(), collections.Counter()
+    for r in rows:
+        age[clean_age(r.get(age_f))] += 1
+        sex[clean_sex(r.get(sex_f))] += 1
+        race[clean_race(r.get(race_f))] += 1
     return age, sex, race
 
+va, vs, vr = totals(victims, "victim_age_group", "victim_sex", "victim_race")
+oa, os_, orc = totals(offenders, "perp_age_group", "perp_sex", "perp_race")
 
-v_age, v_sex, v_race = demo(victims, "victim_age_group", "victim_sex", "victim_race")
-o_age, o_sex, o_race = demo(offenders, "perp_age_group", "perp_sex", "perp_race")
-
-AGE_ORDER = ["<18", "18-24", "25-44", "45-64", "65+", "Unknown"]
-
-
-def order_counter(c, order):
+def order_c(c, order):
     keys = [k for k in order if k in c] + [k for k in c if k not in order]
     return [{"label": k, "n": c[k]} for k in keys]
 
-
-def top_counter(c, n=12):
+def top_c(c, n=8):
     return [{"label": k, "n": v} for k, v in c.most_common(n)]
 
+# ---------- precinct change analysis ----------
+def window_avg(prec, yrs):
+    return sum(precinct_year[prec].get(y, 0) for y in yrs) / len(yrs)
 
-years = sorted(by_year)
+city_by_year = {y: by_year[y] for y in years}
+PRE = [2015, 2016, 2017, 2018, 2019]      # pre-pandemic baseline
+POST = [2021, 2022, 2023, 2024, 2025]     # recent
+PAN_BASE = [2018, 2019]
+PAN_PEAK = [2020, 2021]
+DECLINE_PEAK = [2020, 2021]
+DECLINE_RECENT = [2023, 2024, 2025]
+
+city_pre = sum(city_by_year.get(y, 0) for y in PRE) / len(PRE)
+city_post = sum(city_by_year.get(y, 0) for y in POST) / len(POST)
+
+prec_changes = []
+for p in precinct_total:
+    if precinct_total[p] < 60:   # skip very low-volume precincts (Midtown, etc.) for stability
+        continue
+    pre = window_avg(p, PRE)
+    post = window_avg(p, POST)
+    share_pre = 100 * pre / city_pre if city_pre else 0
+    share_post = 100 * post / city_post if city_post else 0
+    pan_base = window_avg(p, PAN_BASE)
+    pan_peak = window_avg(p, PAN_PEAK)
+    dec_peak = window_avg(p, DECLINE_PEAK)
+    dec_recent = window_avg(p, DECLINE_RECENT)
+    prec_changes.append({
+        "precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
+        "total": precinct_total[p],
+        "share_pre": round(share_pre, 2), "share_post": round(share_post, 2),
+        "share_change": round(share_post - share_pre, 2),
+        "pandemic_pct": round(100 * (pan_peak - pan_base) / pan_base, 0) if pan_base >= 3 else None,
+        "pandemic_abs": round(pan_peak - pan_base, 1),
+        "decline_pct": round(100 * (dec_recent - dec_peak) / dec_peak, 0) if dec_peak >= 3 else None,
+        "pre_avg": round(pre, 1), "post_avg": round(post, 1),
+        "peak_avg": round(dec_peak, 1), "recent_avg": round(dec_recent, 1),
+    })
+
+# ---------- simplified, projected SVG paths for small multiples ----------
+print("Fetching precinct geometry...", file=sys.stderr)
+geo_url = f"{GEO}/{PRECINCTS}?method=export&format=GeoJSON"
+gj = None
+try:
+    req = urllib.request.Request(geo_url, headers={"User-Agent": "shootings-build/2.0"})
+    with urllib.request.urlopen(req, timeout=180) as r:
+        gj = json.load(r)
+    with open(os.path.join(DATA, "precincts.geojson"), "w") as f:
+        json.dump(gj, f, separators=(",", ":"))
+except Exception as e:
+    print(f"  WARN: geometry fetch failed: {e}", file=sys.stderr)
+
+def rdp(points, eps):
+    """Ramer-Douglas-Peucker polyline simplification."""
+    if len(points) < 3:
+        return points
+    dmax, idx = 0.0, 0
+    a, b = points[0], points[-1]
+    for i in range(1, len(points) - 1):
+        d = perp_dist(points[i], a, b)
+        if d > dmax:
+            dmax, idx = d, i
+    if dmax > eps:
+        left = rdp(points[:idx + 1], eps)
+        right = rdp(points[idx:], eps)
+        return left[:-1] + right
+    return [a, b]
+
+def perp_dist(p, a, b):
+    if a == b:
+        return math.hypot(p[0] - a[0], p[1] - a[1])
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy)
+    t = max(0, min(1, t))
+    return math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy))
+
+precinct_paths = {}
+VIEW_W = 1000.0
+if gj:
+    # bounds
+    lons, lats = [], []
+    for f in gj["features"]:
+        geom = f["geometry"]
+        polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+        for poly in polys:
+            for ring in poly:
+                for x, y in ring:
+                    lons.append(x); lats.append(y)
+    lon0, lon1 = min(lons), max(lons)
+    lat0, lat1 = min(lats), max(lats)
+    latm = math.radians((lat0 + lat1) / 2)
+    sx = VIEW_W / (lon1 - lon0)
+    sy = sx * math.cos(latm)            # aspect correction
+    VIEW_H = round((lat1 - lat0) * sy, 1)
+    def project(x, y):
+        return (round((x - lon0) * sx, 1), round((lat1 - y) * sy, 1))
+    eps = 0.4   # simplification tolerance in projected px
+    for f in gj["features"]:
+        try:
+            p = int(f["properties"]["precinct"])
+        except (TypeError, ValueError):
+            continue
+        geom = f["geometry"]
+        polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+        d = ""
+        for poly in polys:
+            ring = poly[0]   # outer ring only (drop holes for small multiples)
+            pts = [project(x, y) for x, y in ring]
+            pts = rdp(pts, eps)
+            if len(pts) < 3:
+                continue
+            d += "M" + " L".join(f"{x} {y}" for x, y in pts) + "Z"
+        if d:
+            precinct_paths[str(p)] = d
+    print(f"  {len(precinct_paths)} precinct paths, viewbox {VIEW_W}x{VIEW_H}", file=sys.stderr)
+
+# ---------- assemble ----------
 agg = {
     "meta": {
         "generated": "2026-06-30",
-        "n_incidents": len(incidents),
-        "n_victims": len(victims),
-        "n_offenders": len(offenders),
-        "n_mapped": len(points),
-        "n_no_geo": n_no_geo,
-        "date_min": min((r.get("occur_date", "") for r in incidents), default="")[:10],
-        "date_max": max((r.get("occur_date", "") for r in incidents), default="")[:10],
-        "boros": BOROS,
-        "sources": {
-            "incidents": f"{DOMAIN}/{INCIDENTS}",
-            "victims": f"{DOMAIN}/{VICTIMS}",
-            "offenders": f"{DOMAIN}/{OFFENDERS}",
-            "precincts": f"{DOMAIN}/{PRECINCTS}",
-        },
+        "n_incidents": len(incidents), "n_victims": len(victims), "n_offenders": len(offenders),
+        "n_mapped": len(points), "n_no_geo": n_no_geo,
+        "date_min": (min((r.get("occur_date", "") for r in incidents), default=""))[:10],
+        "date_max": (max((r.get("occur_date", "") for r in incidents), default=""))[:10],
+        "boros": BOROS, "years": years,
+        "view_w": VIEW_W, "view_h": VIEW_H if gj else 0,
+        "windows": {"pre": PRE, "post": POST, "pandemic_base": PAN_BASE, "pandemic_peak": PAN_PEAK,
+                    "decline_peak": DECLINE_PEAK, "decline_recent": DECLINE_RECENT},
+        "sources": {"incidents": f"{DOMAIN}/{INCIDENTS}", "victims": f"{DOMAIN}/{VICTIMS}",
+                    "offenders": f"{DOMAIN}/{OFFENDERS}", "precincts": f"{DOMAIN}/{PRECINCTS}"},
     },
     "by_year": [{"year": y, "incidents": by_year[y], "fatal": by_year_fatal.get(y, 0),
-                 "victims": victims_by_year.get(y, 0),
-                 "victims_fatal": victims_by_year_fatal.get(y, 0)} for y in years],
-    "by_yearmonth": [{"ym": k, "n": by_yearmonth[k]} for k in sorted(by_yearmonth)],
-    "by_month": [{"month": MONTH_NAMES[m - 1], "n": by_month.get(m, 0)} for m in range(1, 13)],
-    "by_dow": [{"dow": DOW_NAMES[i], "n": by_dow.get(i, 0)} for i in range(7)],
+                 "victims": victims_by_year.get(y, 0), "victims_fatal": victims_by_year_fatal.get(y, 0),
+                 "fatal_rate": round(100 * by_year_fatal.get(y, 0) / by_year[y], 1) if by_year[y] else None,
+                 "night_share": round(100 * night_by_year.get(y, 0) / by_year[y], 1) if by_year[y] else None}
+                for y in years],
+    "by_month": [{"month": MON[m - 1], "n": by_month.get(m, 0)} for m in range(1, 13)],
+    "by_dow": [{"dow": DOW[i], "n": by_dow.get(i, 0)} for i in range(7)],
     "by_hour": [{"hour": h, "n": by_hour.get(h, 0)} for h in range(24)],
-    "hour_dow": [{"dow": i, "hour": h, "n": hour_dow.get((i, h), 0)}
-                 for i in range(7) for h in range(24)],
-    "boro_year": [{"boro": b, "series": [{"year": y, "n": boro_year[b].get(y, 0)} for y in years]}
-                  for b in BOROS],
-    "precinct": [{"precinct": int(p) if str(p).isdigit() else p,
+    "hour_dow": [{"dow": i, "hour": h, "n": hour_dow.get((i, h), 0)} for i in range(7) for h in range(24)],
+    "boro_year": [{"boro": b, "series": [{"year": y, "n": boro_year[b].get(y, 0)} for y in years]} for b in BOROS],
+    # all-time demographics
+    "victim_age": order_c(va, VALID_AGE + ["Unknown"]),
+    "victim_sex": order_c(vs, ["Male", "Female", "Unknown"]),
+    "victim_race": top_c(vr, 8),
+    "offender_age": order_c(oa, VALID_AGE + ["Unknown"]),
+    "offender_sex": order_c(os_, ["Male", "Female", "Unknown"]),
+    "offender_race": top_c(orc, 8),
+    # demographics over time (shares)
+    "victim_age_trend": share_series(v_age_y, v_tot_y, VALID_AGE),
+    "victim_race_trend": share_series(v_race_y, v_tot_y, TOP_RACES),
+    "offender_age_trend": share_series(o_age_y, o_tot_y, VALID_AGE),
+    # precinct change analysis + geometry
+    "precinct": [{"precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
                   "total": precinct_total[p], "fatal": precinct_fatal[p],
-                  "recent": precinct_recent.get(p, 0),
-                  "yr": {str(y): precinct_year[p][y] for y in precinct_year[p]}}
+                  "yr": {str(y): precinct_year[p].get(y, 0) for y in precinct_year[p]}}
                  for p in precinct_total],
-    "years": years,
-    "loc_class": top_counter(loc_class, 10),
-    "victim_age": order_counter(v_age, AGE_ORDER),
-    "victim_sex": order_counter(v_sex, ["Male", "Female", "Unknown"]),
-    "victim_race": top_counter(v_race, 12),
-    "offender_age": order_counter(o_age, AGE_ORDER),
-    "offender_sex": order_counter(o_sex, ["Male", "Female", "Unknown"]),
-    "offender_race": top_counter(o_race, 12),
+    "precinct_changes": prec_changes,
+    "precinct_paths": precinct_paths,
 }
 
 os.makedirs(DATA, exist_ok=True)
@@ -268,20 +419,11 @@ with open(os.path.join(DATA, "shootings_agg.json"), "w") as f:
 with open(os.path.join(DATA, "shootings_points.json"), "w") as f:
     json.dump({"boros": BOROS, "points": points}, f, separators=(",", ":"))
 
-# --- precinct geometry ---
-print("Fetching precinct geometry...", file=sys.stderr)
-geo_url = f"{GEO}/{PRECINCTS}?method=export&format=GeoJSON"
-try:
-    req = urllib.request.Request(geo_url, headers={"User-Agent": "shootings-build/1.0"})
-    with urllib.request.urlopen(req, timeout=180) as r:
-        gj = json.load(r)
-    with open(os.path.join(DATA, "precincts.geojson"), "w") as f:
-        json.dump(gj, f, separators=(",", ":"))
-    print(f"  precincts.geojson: {len(gj.get('features', []))} features", file=sys.stderr)
-except Exception as e:
-    print(f"  WARN: precinct geometry fetch failed: {e}", file=sys.stderr)
-
 for fn in ("shootings_agg.json", "shootings_points.json"):
-    p = os.path.join(DATA, fn)
-    print(f"Wrote {fn} ({os.path.getsize(p)//1024} KB)", file=sys.stderr)
-print(f"Mapped points: {len(points)}  | no-geo: {n_no_geo}", file=sys.stderr)
+    print(f"Wrote {fn} ({os.path.getsize(os.path.join(DATA, fn))//1024} KB)", file=sys.stderr)
+print(f"Mapped points: {len(points)} | no-geo: {n_no_geo}", file=sys.stderr)
+# quick previews
+top_share = sorted(prec_changes, key=lambda c: c["share_change"], reverse=True)[:3]
+bot_share = sorted(prec_changes, key=lambda c: c["share_change"])[:3]
+print("Biggest share gains:", [(c["name"], c["share_change"]) for c in top_share], file=sys.stderr)
+print("Biggest share drops:", [(c["name"], c["share_change"]) for c in bot_share], file=sys.stderr)
