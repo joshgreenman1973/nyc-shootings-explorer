@@ -167,6 +167,27 @@ if os.path.exists(pop_path):
             PRECINCT_POP[int(row["precinct"])] = int(row["P1_001N"])
         except (TypeError, ValueError):
             pass
+# Actual precinct populations per year, interpolated from the 2010 + 2020
+# decennial censuses (built by build_precinct_pop.py). Captures real
+# sub-borough change (Downtown Bklyn, Financial District booms).
+PRECINCT_POP_YEARS = {}
+ppy_path = os.path.join(DATA, "precinct_pop_years.json")
+if os.path.exists(ppy_path):
+    raw = json.load(open(ppy_path))
+    for p, d in raw.items():
+        PRECINCT_POP_YEARS[int(p)] = {int(y): v for y, v in d["years"].items()}
+    # prefer the census-tract-derived 2020 figure for consistency across years
+    for p, yrs in PRECINCT_POP_YEARS.items():
+        PRECINCT_POP[p] = yrs.get(2020, PRECINCT_POP.get(p, 0))
+
+
+def precinct_pop_year(p, yr):
+    yrs = PRECINCT_POP_YEARS.get(p)
+    if yrs:
+        return yrs.get(yr) or yrs.get(2020)
+    return PRECINCT_POP.get(p)
+
+
 # Precincts with too few residents for a meaningful rate (parks, business cores)
 LOW_POP = {p for p, n in PRECINCT_POP.items() if n < 5000}
 
@@ -358,9 +379,11 @@ for p in precinct_total:
     pop = PRECINCT_POP.get(p)
     boro = boro_of_precinct(p)
     has_rate = pop and p not in LOW_POP
-    # time-varying population: scale the 2020 base by the borough's pop in each window
+    # time-varying population: ACTUAL precinct population in each window's years
     def win_pop(yrs):
-        return (pop * sum(boro_factor(boro, y) for y in yrs) / len(yrs)) if pop else None
+        vals = [precinct_pop_year(p, y) for y in yrs]
+        vals = [v for v in vals if v]
+        return (sum(vals) / len(vals)) if vals else None
     pop_pre, pop_post = win_pop(PRE), win_pop(POST)
     prec_changes.append({
         "precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
@@ -517,6 +540,8 @@ agg = {
                   "total": precinct_total[p], "fatal": precinct_fatal[p],
                   "pop": PRECINCT_POP.get(p), "low_pop": p in LOW_POP,
                   "boro": boro_of_precinct(p),
+                  "pop_years": {str(y): precinct_pop_year(p, y) for y in years},
+                  "pop2010": PRECINCT_POP_YEARS.get(p, {}).get(2010),
                   # net % change: recent (2023-25 avg) vs early (2006-10 avg) — for the trend map
                   "net_pct": (lambda e, r: round(100 * (r - e) / e, 0) if e >= 3 else None)(
                       sum(precinct_year[p].get(y, 0) for y in (2006, 2007, 2008, 2009, 2010)) / 5,

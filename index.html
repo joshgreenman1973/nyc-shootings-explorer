@@ -73,6 +73,7 @@ h2.sec{font-family:"Archivo",sans-serif;font-weight:800;font-size:clamp(26px,3.4
 .seg button.on{background:var(--ink);color:var(--paper);font-weight:700}
 .seg button:hover:not(.on){background:var(--paper2);color:var(--ink)}
 .ctl-label{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em}
+.yrsel{font-family:"JetBrains Mono",monospace;font-size:12px;border:1px solid var(--ink);background:var(--card);color:var(--ink);padding:6px 8px;cursor:pointer}
 
 /* what-changed cards */
 .change-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair);border:1px solid var(--hair)}
@@ -263,6 +264,12 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"JetBra
         <button data-r="spike">Biggest pandemic spikes</button>
         <button data-r="decline">Biggest declines since</button>
       </div>
+      <span id="cmp-controls" style="display:flex;align-items:center;gap:8px;margin-left:6px">
+        <span class="ctl-label">Compare</span>
+        <select id="cmpA" class="yrsel"></select>
+        <span class="ctl-label" style="letter-spacing:0">→</span>
+        <select id="cmpB" class="yrsel"></select>
+      </span>
     </div>
     <div class="grid2">
       <div class="card"><h3 id="rank-t1"></h3><div class="cap" id="rank-c1"></div><div class="rank" id="rank-1"></div></div>
@@ -280,8 +287,8 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"JetBra
     <div class="sub2">Drag the slider to move through the years, or press play to watch the decline unfold. Or switch to <b>20-yr change</b> to see the whole trajectory on a single map: where shootings fell most (steel) and the few places they rose (red), 2023–25 versus 2006–10.</div>
     <div class="controls" style="margin-top:18px">
       <span class="ctl-label">Show</span>
-      <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">By year</button><button data-mode="change">20-yr change (one map)</button><button data-mode="points">Each shooting</button></div>
-      <span class="ctl-label" style="margin-left:6px">Measure</span>
+      <div class="seg" id="seg-mapmode"><button data-mode="choro" class="on">By precinct</button><button data-mode="density">Density</button><button data-mode="points">Dots</button><button data-mode="change">20-yr change</button></div>
+      <span class="ctl-label" style="margin-left:6px" id="percap-label">Measure</span>
       <div class="seg" id="seg-percap"><button data-pc="0" class="on">Raw count</button><button data-pc="1">Per 100k residents</button></div>
       <span class="ctl-label" style="margin-left:6px">Fatal only</span>
       <div class="seg" id="seg-fatal"><button data-f="0" class="on">No</button><button data-f="1">Yes</button></div>
@@ -300,8 +307,8 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"JetBra
 <section class="numbered">
   <div class="wrap reveal">
     <div class="kh">The people</div>
-    <h2 class="sec">Who is shot, and who fires</h2>
-    <div class="sub2">Victim records cover essentially every shooting (28,912). Offender records exist only where a suspect was identified (18,901) — an arrest-skewed subset, read with care. Shown side by side.</div>
+    <h2 class="sec">Who was shot, and who fired</h2>
+    <div class="sub2">Victim records covered essentially every shooting (28,912). Offender records existed only where a suspect was identified (18,901) — an arrest-skewed subset, read with care. Shown side by side.</div>
     <div class="grid2" style="margin-top:20px">
       <div class="card"><h3>Victims</h3><div class="cap">28,912 people shot · age, sex, race</div>
         <svg class="chart" id="c-vage" viewBox="0 0 360 150"></svg>
@@ -350,7 +357,8 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"JetBra
       <summary>Methodology, sources &amp; limitations</summary>
       <p><b style="color:var(--ink)">Sources.</b> NYC Open Data's shooting collection (published Feb 2026): <a href="https://data.cityofnewyork.us/d/5ucz-vwe8" target="_blank" rel="noopener">Shootings</a> (<code>5ucz-vwe8</code>), <a href="https://data.cityofnewyork.us/d/pztn-9bne" target="_blank" rel="noopener">Victims</a> (<code>pztn-9bne</code>), <a href="https://data.cityofnewyork.us/d/gdk4-mbsv" target="_blank" rel="noopener">Offenders</a> (<code>gdk4-mbsv</code>), and the shoreline-clipped <a href="https://data.cityofnewyork.us/d/y76i-bdw7" target="_blank" rel="noopener">Police Precincts</a> (<code>y76i-bdw7</code>). Records run <span id="m-range"></span>; 2026 is partial.</p>
       <p><b style="color:var(--ink)">Counting.</b> "Shootings" are incidents (one row per event); victims/offenders join on <code>incident_key</code>. An incident is <b>fatal</b> if any victim carries the statistical-murder flag. The source <code>latitude</code>/<code>longitude</code> columns are swapped; we correct them before mapping. Junk ages (e.g. 1022) and mixed sex labels are normalized.</p>
-      <p><b style="color:var(--ink)">Neighborhoods &amp; change windows.</b> The geographic unit is the NYPD precinct, labeled with the neighborhood it mainly covers (approximate, for readability). <b>Share of city total</b> compares a pre-pandemic window (2015–2019 average) with a recent one (2021–2025). <b>Pandemic spikes</b> compare 2018–2019 with 2020–2021. <b>Declines</b> compare 2020–2021 with 2023–2025. Low-volume precincts (under 60 lifetime shootings) are excluded from the change tables for stability. Counts are raw, not population-adjusted — read as "where," not personal risk.</p>
+      <p><b style="color:var(--ink)">Neighborhoods &amp; change windows.</b> The geographic unit is the NYPD precinct, labeled with the neighborhood it mainly covers (approximate, for readability). <b>Share of city total</b> compares a pre-pandemic window (2015–2019 average) with a recent one (2021–2025). <b>Pandemic spikes</b> compare 2018–2019 with 2020–2021. <b>Declines</b> compare 2020–2021 with 2023–2025. The share comparison is also user-selectable to any two years (2006 onward). Low-volume precincts (under 60 lifetime shootings) are excluded from the change tables for stability.</p>
+      <p><b style="color:var(--ink)">Population &amp; rates.</b> Per-capita rates use <b>actual precinct population in each year</b>, not a fixed figure. We took total population by census tract from the 2010 and 2020 decennial censuses, assigned each tract to a precinct by its centroid, summed, and interpolated between (and extrapolated beyond) the two censuses. This captures real local change — the Financial District precinct grew ~130% and Downtown Brooklyn ~70% between censuses. The all-precinct 2020 total reconciles to ~8.77M. Central Park's precinct is omitted from rates (almost no residents).</p>
       <p><b style="color:var(--ink)">Confidence.</b> <b>High</b> for incident counts, geography, timing and victim demographics; <b>medium</b> for offender demographics (identified-suspect subset) and the demographic-share trends (category definitions can shift over twenty years). Nothing is modeled — every figure is a direct count of published records.</p>
       <div style="margin-top:16px"><button class="ai-btn" id="aiBtn">⚠ A note on AI assistance</button>
         <div class="ai-pop" id="aiPop"><b>How this was made.</b> The pipeline, maps and charts were built with AI assistance (Claude). Every number is computed directly from the four datasets by a transparent script — nothing is AI-estimated. Checks: incident/victim/offender counts reconciled with source totals (24,127 / 28,912 / 18,901); the lat/lon swap caught and corrected against sample records and the precinct map; yearly totals and the fatal-incident join spot-checked; precinct change windows hand-verified for several neighborhoods. Not independently re-reported: NYPD classification, geocoding and arrest decisions, taken as published.</div>
@@ -368,12 +376,14 @@ footer{padding:36px 0 70px;color:var(--dim);font-size:12.5px;font-family:"JetBra
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
 const fmt=n=>Math.round(n).toLocaleString('en-US');
 const $=s=>document.querySelector(s);
 let A=null,P=null,geo=null,map=null,choLayer=null,ptLayer=null,precIndex={};
 let mstate={mode:'choro',year:0,fatal:0,percap:0},hmMode='count',hmSort='boro';
-const MAP_RAMP=['#e4e1d8','#e6c4a6','#dc926b','#c75e3d','#a32f1d','#6e120f'];
+// cool slate→ink sequential (deliberately not skin/earth tones)
+const MAP_RAMP=['#e3e6e8','#bcc7d0','#8b9fb2','#5e7894','#3b5673','#1d3450'];
 
 Promise.all([
   fetch('data/shootings_agg.json').then(r=>r.json()),
@@ -406,7 +416,10 @@ function init(){
   seg('#seg-zero','z',v=>{arcZero=+v;drawArc();});
   seg('#seg-hm','h',v=>{hmMode=v;buildHeatmap();});
   seg('#seg-hmsort','o',v=>{hmSort=v;buildHeatmap();});
-  seg('#seg-rank','r',v=>drawRankings(v));
+  seg('#seg-rank','r',v=>{rankMode=v;drawRankings(v);});
+  // populate compare-year selectors (default full span 2006 -> 2025)
+  const selYrs=A.meta.years.filter(y=>y<=2025);
+  ['#cmpA','#cmpB'].forEach((sel,i)=>{const el=$(sel);el.innerHTML=selYrs.map(y=>`<option value="${y}">${y}</option>`).join('');el.value=i?2025:2006;el.onchange=()=>drawRankings('share');});
   seg('#seg-mapmode','mode',v=>{mstate.mode=v;renderMap();});
   seg('#seg-percap','pc',v=>{mstate.percap=+v;renderMap();});
   seg('#seg-fatal','f',v=>{mstate.fatal=+v;renderMap();});
@@ -526,13 +539,20 @@ function drawDivergence(cut){
   const asPts=as.map(y=>({x:y.year,y:100*y.n/as0}));
   const lim=cut||2025;
   const shc=shPts.filter(p=>p.x<=lim), asc=asPts.filter(p=>p.x<=lim);
-  lineChart('c-div',[
+  const {X,Y}=lineChart('c-div',[
     {color:'var(--steel)',w:2.6,pts:asc},
     {color:'var(--red)',w:2.8,pts:shc}
   ],{H:340,zero:true,fmtY:v=>v.toFixed(0),partials:[],markers:true});
+  const s=document.getElementById('c-div');
+  // rotated y-axis title — make the INDEX explicit so it can't read as raw counts
+  const yt=el('text',{x:12,y:170,class:'axis','text-anchor':'middle',transform:'rotate(-90 12 170)'},s);
+  yt.textContent='INDEX · 2006 = 100';yt.setAttribute('fill','var(--ink2)');
+  // direct end-of-line labels
   const lastSh=shPts.find(p=>p.x===lim),lastAs=asPts.find(p=>p.x===lim);
-  $('#div-readout').textContent=`${lim} · shootings ${lastSh.y.toFixed(0)} · assault ${lastAs.y.toFixed(0)} (2006=100)`;
-  $('#div-leg').innerHTML='<span style="color:var(--red)">●</span> shooting incidents &nbsp;&nbsp; <span style="color:var(--steel)">●</span> felony assault complaints &nbsp;·&nbsp; indexed to 2006 = 100';
+  el('text',{x:X(lim)+6,y:Y(lastAs.y)+3,class:'vlabel'},s).textContent=`assault ${lastAs.y.toFixed(0)}`;
+  el('text',{x:X(lim)+6,y:Y(lastSh.y)+3,class:'vlabel'},s).textContent=`shootings ${lastSh.y.toFixed(0)}`;
+  $('#div-readout').textContent=`${lim} · shootings ${lastSh.y.toFixed(0)} · assault ${lastAs.y.toFixed(0)} (index, 2006=100)`;
+  $('#div-leg').innerHTML='<span style="color:var(--red)">●</span> shooting incidents &nbsp;&nbsp; <span style="color:var(--steel)">●</span> felony assault complaints &nbsp;·&nbsp; <b>indexed to 2006 = 100</b> (assault’s raw count runs ~15–20× higher; indexing lets the trajectories be compared)';
 }
 let divTimer=null;
 function playDivergence(){
@@ -570,8 +590,8 @@ function avg(a){return a.reduce((s,x)=>s+x,0)/a.length;}
 
 /* borough from precinct number */
 function boroOf(p){if(p<=34)return 'Manhattan';if(p<=59)return 'Bronx';if(p<=94)return 'Brooklyn';if(p<=119)return 'Queens';return 'Staten Island';}
-/* time-varying population for a precinct in a given year (2020 base x borough factor) */
-function popOf(p,y){const f=A.boro_factor[p.boro]&&A.boro_factor[p.boro][String(y)];return p.pop*(f||1);}
+/* actual precinct population in a given year (2010+2020 census, interpolated) */
+function popOf(p,y){const v=p.pop_years&&p.pop_years[String(y)];return v||p.pop;}
 const BORO_ORDER=['Manhattan','Bronx','Brooklyn','Queens','Staten Island'];
 const BORO_COL={Manhattan:'#2f6175',Bronx:'#bb2018',Brooklyn:'#6e120f',Queens:'#cf6f35','Staten Island':'#5a8aa0'};
 
@@ -624,16 +644,25 @@ function drawLevel(){
 }
 
 /* RANKINGS (change only) */
+let rankMode='share';
 function drawRankings(mode){
   const pc=A.precinct_changes;
+  const cmp=$('#cmp-controls');if(cmp)cmp.style.display=mode==='share'?'flex':'none';
   if(mode==='share'){
-    const sorted=pc.slice().sort((a,b)=>b.share_change-a.share_change);
-    const maxShare=Math.max(...pc.map(c=>Math.max(c.share_pre,c.share_post)));
-    renderDumbbell('rank-1','rank-t1','rank-c1','Gained share of city shootings','share of all NYC shootings: 2015–19 ● → 2021–25 ●',
-      sorted.slice(0,8).map(c=>({name:c.name,prec:c.precinct,pre:c.share_pre,post:c.share_post})),maxShare);
-    renderDumbbell('rank-2','rank-t2','rank-c2','Lost share of city shootings','share of all NYC shootings: 2015–19 ● → 2021–25 ●',
-      sorted.slice(-8).reverse().map(c=>({name:c.name,prec:c.precinct,pre:c.share_pre,post:c.share_post})),maxShare);
-    $('#rank-note').textContent='These are shares of the citywide total, shown on a common scale so the movements read at true size — every neighborhood sits between roughly 1% and 5% of all shootings, and the shifts are real but small. The center of gravity drifted from Brooklyn (Bed-Stuy, East Flatbush) toward the Bronx (East Tremont, Mott Haven), even as totals fell almost everywhere.';
+    // user-selectable comparison years (default 2006 -> 2025, full span)
+    const yA=+$('#cmpA').value||2006, yB=+$('#cmpB').value||2025;
+    const cityA=A.by_year.find(b=>b.year===yA).incidents, cityB=A.by_year.find(b=>b.year===yB).incidents;
+    const rows=A.precinct.filter(p=>p.total>=60).map(p=>{
+      const a=(p.yr[String(yA)]||0)/cityA*100, b=(p.yr[String(yB)]||0)/cityB*100;
+      return {name:p.name,prec:p.precinct,pre:+a.toFixed(2),post:+b.toFixed(2),chg:b-a};
+    });
+    const sorted=rows.slice().sort((a,b)=>b.chg-a.chg);
+    const maxShare=Math.max(...rows.map(c=>Math.max(c.pre,c.post)));
+    renderDumbbell('rank-1','rank-t1','rank-c1','Gained share of city shootings',`share of all NYC shootings: ${yA} ● → ${yB} ●`,
+      sorted.slice(0,8),maxShare);
+    renderDumbbell('rank-2','rank-t2','rank-c2','Lost share of city shootings',`share of all NYC shootings: ${yA} ● → ${yB} ●`,
+      sorted.slice(-8).reverse(),maxShare);
+    $('#rank-note').textContent=`Shares of the citywide total in ${yA} versus ${yB}, on a common scale so the movements read at true size — most neighborhoods sit between roughly 1% and 5% of all shootings. Pick any two years above. Over the full span the center of gravity drifts from Brooklyn toward the Bronx, even as totals fall almost everywhere.`;
     return;
   }
   if(mode==='spike'){
@@ -693,7 +722,7 @@ function drawWho(){
 }
 function drawCasualties(){
   const d=A.casualties.vpi_dist;
-  vbars('c-vpi',d,{val:x=>x.incidents,label:x=>x.victims,fmtVal:fmt,pad:[16,8,28,42],color:(x,i)=>['#d98c3f','#cf6f35','#b0432a','#8a1e1a','#6e1414'][i]});
+  vbars('c-vpi',d,{val:x=>x.incidents,label:x=>x.victims,fmtVal:fmt,pad:[16,8,28,42],color:(x,i)=>['#8b9fb2','#5e7894','#3b5673','#1d3450','#0f2238'][i]});
   const m=A.by_year.map(y=>({x:y.year,y:y.multi_share}));
   lineChart('c-multi',[{color:'var(--ox)',fill:true,pts:m}],{W:360,H:200,pad:[16,10,28,40],zero:true,fmtY:v=>v.toFixed(0)+'%',partials:[2026]});
   const tot=A.casualties.multi_total;
@@ -719,8 +748,16 @@ function buildMap(){
   A.precinct.forEach(p=>precIndex[String(p.precinct)]=p);
   choLayer=L.geoJSON(geo,{style:choStyle,onEachFeature:(f,l)=>{l.on('mouseover',()=>l.setStyle({weight:2,color:'#1c1814'}));l.on('mouseout',()=>choLayer.resetStyle(l));l.bindPopup(()=>precPopup(f));}});
   ptLayer=L.layerGroup();
+  heatLayer=L.heatLayer([],{radius:18,blur:22,minOpacity:.25,max:1.0,
+    gradient:{0.0:'#3b5673',0.35:'#5e7894',0.6:'#caa24a',0.8:'#cf6f35',1.0:'#bb2018'}});
   const lg=L.control({position:'bottomright'});lg.onAdd=()=>{const d=L.DomUtil.create('div','legend');d.id='legend';return d;};lg.addTo(map);
   renderMap();
+}
+let heatLayer=null;
+function renderDensity(){
+  const pts=[];P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;pts.push([lat,lon,fatal?1.0:0.65]);});
+  heatLayer.setLatLngs(pts);
+  $('#yCount').textContent=fmt(pts.length)+(mstate.fatal?' fatal':'')+' shootings';
 }
 let choMax=1;
 // raw shooting count for a precinct under current year/fatal state
@@ -750,23 +787,35 @@ function precPopup(f){const p=precIndex[String(f.properties.precinct)];const nm=
     <div class="pr"><span>Shootings (${mstate.year===0?'all years':mstate.year})</span><b>${fmt(rawCount(p))}</b></div>
     ${rateLine}
     <div class="pr"><span>All-time total</span><b>${fmt(p?p.total:0)}</b></div></div>`;}
+function clearMapLayers(){[choLayer,ptLayer,heatLayer].forEach(l=>{if(l&&map.hasLayer(l))map.removeLayer(l);});}
 function renderMap(){
   $('#yLabel').textContent=mstate.year===0?'All years':mstate.year;
   const sliderRow=$('#yearSlider').closest('.slider-wrap');
+  // per-capita only applies to the precinct (choropleth) view
+  const pcOn=mstate.mode==='choro';
+  $('#seg-percap').style.opacity=pcOn?1:.4;$('#seg-percap').style.pointerEvents=pcOn?'auto':'none';
+  if(mstate.mode==='density'){
+    clearMapLayers();renderDensity();heatLayer.addTo(map);legendDensity();
+    if(sliderRow)sliderRow.style.opacity=1,$('#yearSlider').disabled=false;
+    $('#mapNote').textContent='A smoothed density surface — the right way to read concentration. Brighter = more shootings clustered. Use the slider to move through the years.';
+    return;
+  }
   if(mstate.mode==='change'){
-    if(map.hasLayer(ptLayer))map.removeLayer(ptLayer);if(!map.hasLayer(choLayer))choLayer.addTo(map);choLayer.setStyle(choStyle);legendChange();
+    clearMapLayers();choLayer.addTo(map);choLayer.setStyle(choStyle);legendChange();
     if(sliderRow)sliderRow.style.opacity=.4,$('#yearSlider').disabled=true;
     $('#yLabel').textContent='2006→2025';$('#yCount').textContent='net change by precinct';
     $('#mapNote').textContent='One map, the whole trajectory: each precinct’s average annual shootings in 2023–25 versus 2006–10. Steel = fell, red = rose. Most of the city is steel; the deepest blues are Southeast Queens and central Brooklyn.';
     return;
   }
   if(sliderRow)sliderRow.style.opacity=1,$('#yearSlider').disabled=false;
-  if(mstate.mode==='choro'){if(map.hasLayer(ptLayer))map.removeLayer(ptLayer);computeMax();if(!map.hasLayer(choLayer))choLayer.addTo(map);choLayer.setStyle(choStyle);legendCho();
+  if(mstate.mode==='choro'){clearMapLayers();computeMax();choLayer.addTo(map);choLayer.setStyle(choStyle);legendCho();
     let tot=0;A.precinct.forEach(p=>tot+=rawCount(p));$('#yCount').textContent=fmt(tot)+(mstate.fatal?' fatal':'')+' shootings';
-    $('#mapNote').textContent=mstate.percap?'Shaded by shootings per 100,000 residents, using each year’s population (Census borough estimates × 2020 precinct base). Central Park left blank — too few residents.':'Precinct totals are raw counts, not population-adjusted. 2026 covers January–March only.';}
-  else{if(map.hasLayer(choLayer))map.removeLayer(choLayer);renderPoints();if(!map.hasLayer(ptLayer))ptLayer.addTo(map);legendPts();
-    $('#mapNote').textContent='Each dot is one shooting incident'+(mstate.year?` in ${mstate.year}`:'')+'.';}
+    $('#mapNote').textContent=mstate.percap?'Shaded by shootings per 100,000 residents, using each year’s ACTUAL precinct population (2010+2020 census, interpolated). Central Park left blank — too few residents.':'Precinct totals are raw counts, not population-adjusted. 2026 covers January–March only.';}
+  else{clearMapLayers();renderPoints();ptLayer.addTo(map);legendPts();
+    $('#mapNote').textContent='Each dot is one shooting incident'+(mstate.year?` in ${mstate.year}`:'')+'. For concentration, the Density view reads better than dots.';}
 }
+function legendDensity(){const e=document.getElementById('legend');if(!e)return;
+  e.innerHTML=`<b>Shooting density${mstate.year?' · '+mstate.year:''}</b><div class="scale"><span class="sw" style="background:#3b5673"></span><span class="sw" style="background:#5e7894"></span><span class="sw" style="background:#caa24a"></span><span class="sw" style="background:#cf6f35"></span><span class="sw" style="background:#bb2018"></span></div><div class="ticks"><span>sparse</span><span>dense</span></div>`;}
 function legendChange(){const e=document.getElementById('legend');if(!e)return;
   e.innerHTML=`<b>20-yr change in shootings</b><div class="scale">${[...DIV_NEG].reverse().concat(DIV_POS).map(c=>`<span class="sw" style="background:${c}"></span>`).join('')}</div><div class="ticks"><span>−80%</span><span>0</span><span>+80%</span></div>`;}
 function renderPoints(){ptLayer.clearLayers();let n=0;P.points.forEach(p=>{const[lat,lon,py,bi,fatal]=p;if(mstate.year&&py!==mstate.year)return;if(mstate.fatal&&!fatal)return;n++;
