@@ -60,6 +60,59 @@ PRECINCT_NAME = {
 }
 
 
+# Felony assault complaints citywide by year, from NYPD Complaint Data
+# (RPT_DT year, OFNS_DESC='FELONY ASSAULT'), dataset qgea-i56i. Verified pull.
+ASSAULT_BY_YEAR = {
+    2006: 17036, 2007: 17322, 2008: 16282, 2009: 16774, 2010: 17064,
+    2011: 18605, 2012: 19504, 2013: 20388, 2014: 20279, 2015: 20381,
+    2016: 20923, 2017: 20185, 2018: 20385, 2019: 20898, 2020: 20779,
+    2021: 23066, 2022: 26201, 2023: 27845, 2024: 29452, 2025: 29841,
+}
+
+# Borough resident population by year (US Census county estimates, vintages
+# 2019 + 2024). 2006-2009 linearly extrapolated from 2010-2013; 2025 = 2024.
+# Lets per-capita rates vary over time instead of being pinned to 2020.
+BORO_POP = {
+    "BRONX": {2010: 1387298, 2011: 1397335, 2012: 1411496, 2013: 1421928, 2014: 1430942, 2015: 1440005, 2016: 1444417, 2017: 1440625, 2018: 1432087, 2019: 1418207, 2020: 1459323, 2021: 1420392, 2022: 1384189, 2023: 1375266, 2024: 1384724},
+    "BROOKLYN": {2010: 2509828, 2011: 2540817, 2012: 2568450, 2013: 2587684, 2014: 2601513, 2015: 2608794, 2016: 2608423, 2017: 2594676, 2018: 2578074, 2019: 2559903, 2020: 2716455, 2021: 2634268, 2022: 2596607, 2023: 2592937, 2024: 2617631},
+    "MANHATTAN": {2010: 1588767, 2011: 1608293, 2012: 1623911, 2013: 1627491, 2014: 1630678, 2015: 1636063, 2016: 1635443, 2017: 1630698, 2018: 1629055, 2019: 1628706, 2020: 1679602, 2021: 1576787, 2022: 1597103, 2023: 1633229, 2024: 1660664},
+    "QUEENS": {2010: 2234701, 2011: 2255482, 2012: 2272222, 2013: 2287185, 2014: 2298736, 2015: 2305838, 2016: 2306830, 2017: 2295808, 2018: 2274605, 2019: 2253858, 2020: 2389813, 2021: 2328286, 2022: 2285640, 2023: 2294682, 2024: 2316841},
+    "STATEN ISLAND": {2010: 469615, 2011: 471021, 2012: 470614, 2013: 471803, 2014: 471937, 2015: 472349, 2016: 474040, 2017: 475671, 2018: 476260, 2019: 476143, 2020: 495113, 2021: 494039, 2022: 492640, 2023: 494774, 2024: 498212},
+}
+
+
+def boro_pop_year(boro, yr):
+    """Borough population for a given year, with extrapolation outside 2010-2024."""
+    d = BORO_POP.get(boro)
+    if not d:
+        return None
+    if yr in d:
+        return d[yr]
+    if yr < 2010:                       # extrapolate back from 2010-2013 slope
+        slope = (d[2013] - d[2010]) / 3
+        return d[2010] - slope * (2010 - yr)
+    return d[2024]                       # 2025+ hold 2024
+
+
+def boro_factor(boro, yr):
+    """Population scale vs 2020 (the year the precinct base pop is measured)."""
+    base = boro_pop_year(boro, 2020)
+    cur = boro_pop_year(boro, yr)
+    return (cur / base) if base and cur else 1.0
+
+
+def boro_of_precinct(p):
+    if p <= 34:
+        return "MANHATTAN"
+    if p <= 59:
+        return "BRONX"
+    if p <= 94:
+        return "BROOKLYN"
+    if p <= 119:
+        return "QUEENS"
+    return "STATEN ISLAND"
+
+
 def fetch_all(dataset, order=None):
     rows, offset, page = [], 0, 50000
     while True:
@@ -303,10 +356,15 @@ for p in precinct_total:
     dec_peak = window_avg(p, DECLINE_PEAK)
     dec_recent = window_avg(p, DECLINE_RECENT)
     pop = PRECINCT_POP.get(p)
+    boro = boro_of_precinct(p)
     has_rate = pop and p not in LOW_POP
+    # time-varying population: scale the 2020 base by the borough's pop in each window
+    def win_pop(yrs):
+        return (pop * sum(boro_factor(boro, y) for y in yrs) / len(yrs)) if pop else None
+    pop_pre, pop_post = win_pop(PRE), win_pop(POST)
     prec_changes.append({
         "precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
-        "total": precinct_total[p], "pop": pop,
+        "total": precinct_total[p], "pop": pop, "boro": boro,
         "share_pre": round(share_pre, 2), "share_post": round(share_post, 2),
         "share_change": round(share_post - share_pre, 2),
         "pandemic_pct": round(100 * (pan_peak - pan_base) / pan_base, 0) if pan_base >= 3 else None,
@@ -314,9 +372,9 @@ for p in precinct_total:
         "decline_pct": round(100 * (dec_recent - dec_peak) / dec_peak, 0) if dec_peak >= 3 else None,
         "pre_avg": round(pre, 1), "post_avg": round(post, 1),
         "peak_avg": round(dec_peak, 1), "recent_avg": round(dec_recent, 1),
-        # annual shootings per 100k residents, recent window (2021-25)
-        "rate_post": round(post / pop * 100000, 1) if has_rate else None,
-        "rate_pre": round(pre / pop * 100000, 1) if has_rate else None,
+        # annual shootings per 100k residents, using population OF EACH WINDOW
+        "rate_post": round(post / pop_post * 100000, 1) if has_rate and pop_post else None,
+        "rate_pre": round(pre / pop_pre * 100000, 1) if has_rate and pop_pre else None,
     })
 
 # ---------- simplified, projected SVG paths for small multiples ----------
@@ -405,6 +463,15 @@ agg = {
         "date_min": (min((r.get("occur_date", "") for r in incidents), default=""))[:10],
         "date_max": (max((r.get("occur_date", "") for r in incidents), default=""))[:10],
         "boros": BOROS, "years": years,
+        # counterfactual: if 2006 levels had held flat across 2007-2025
+        "counterfactual": (lambda yy: {
+            "base_year": 2006,
+            "base_victims": victims_by_year.get(2006, 0),
+            "base_incidents": by_year.get(2006, 0),
+            "fewer_victims": round(victims_by_year.get(2006, 0) * len(yy) - sum(victims_by_year.get(y, 0) for y in yy)),
+            "fewer_incidents": round(by_year.get(2006, 0) * len(yy) - sum(by_year.get(y, 0) for y in yy)),
+            "span": [yy[0], yy[-1]],
+        })([y for y in years if 2007 <= y <= 2025]),
         "view_w": VIEW_W, "view_h": VIEW_H if gj else 0,
         "windows": {"pre": PRE, "post": POST, "pandemic_base": PAN_BASE, "pandemic_peak": PAN_PEAK,
                     "decline_peak": DECLINE_PEAK, "decline_recent": DECLINE_RECENT},
@@ -424,6 +491,11 @@ agg = {
         "multi_total": sum(multi_by_year.values()),
         "city_pop_2020": sum(PRECINCT_POP.values()),
     },
+    # Felony assault, for the divergence chart (shootings fell, assault rose)
+    "assault_by_year": [{"year": y, "n": ASSAULT_BY_YEAR[y]} for y in sorted(ASSAULT_BY_YEAR)],
+    # Borough population by year (time-varying denominators) + scale factors vs 2020
+    "boro_pop": {b: {str(y): round(boro_pop_year(b, y)) for y in range(2006, 2027)} for b in BORO_POP},
+    "boro_factor": {b: {str(y): round(boro_factor(b, y), 4) for y in range(2006, 2027)} for b in BORO_POP},
     "by_month": [{"month": MON[m - 1], "n": by_month.get(m, 0)} for m in range(1, 13)],
     "by_dow": [{"dow": DOW[i], "n": by_dow.get(i, 0)} for i in range(7)],
     "by_hour": [{"hour": h, "n": by_hour.get(h, 0)} for h in range(24)],
@@ -444,6 +516,11 @@ agg = {
     "precinct": [{"precinct": p, "name": PRECINCT_NAME.get(p, f"Precinct {p}"),
                   "total": precinct_total[p], "fatal": precinct_fatal[p],
                   "pop": PRECINCT_POP.get(p), "low_pop": p in LOW_POP,
+                  "boro": boro_of_precinct(p),
+                  # net % change: recent (2023-25 avg) vs early (2006-10 avg) — for the trend map
+                  "net_pct": (lambda e, r: round(100 * (r - e) / e, 0) if e >= 3 else None)(
+                      sum(precinct_year[p].get(y, 0) for y in (2006, 2007, 2008, 2009, 2010)) / 5,
+                      sum(precinct_year[p].get(y, 0) for y in (2023, 2024, 2025)) / 3),
                   "yr": {str(y): precinct_year[p].get(y, 0) for y in precinct_year[p]}}
                  for p in precinct_total],
     "precinct_changes": prec_changes,
