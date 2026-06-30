@@ -118,10 +118,10 @@ figure,.fig{margin:26px 0}
 
 /* charts */
 svg.chart{width:100%;display:block;overflow:visible}
-.axis{font-family:var(--sans);font-size:11px;fill:var(--dim)}
+.axis{font-family:var(--sans);font-size:9px;fill:var(--dim)}
 .gridline{stroke:var(--hair)}
-.lbl{font-family:var(--sans);font-size:11px;fill:var(--ink2)}
-.vlabel{font-family:var(--sans);font-size:11px;fill:var(--ink);font-weight:600}
+.lbl{font-family:var(--sans);font-size:9px;fill:var(--ink2)}
+.vlabel{font-family:var(--sans);font-size:9px;fill:var(--ink);font-weight:600}
 
 table{width:100%;border-collapse:collapse;font-size:15px;font-family:var(--serif)}
 th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--hair)}
@@ -312,13 +312,13 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
     <div class="sub2">Victim records covered essentially every shooting (28,912). Offender records existed only where a suspect was identified (18,901) — an arrest-skewed subset, read with care. Shown side by side.</div>
     <div class="grid2" style="margin-top:20px">
       <div class="card"><h3>Victims</h3><div class="cap">28,912 people shot · age, sex, race</div>
-        <svg class="chart" id="c-vage" viewBox="0 0 360 150"></svg>
-        <svg class="chart" id="c-vsex" viewBox="0 0 360 110"></svg>
-        <svg class="chart" id="c-vrace" viewBox="0 0 360 180"></svg></div>
+        <svg class="chart" id="c-vage" viewBox="0 0 480 150"></svg>
+        <svg class="chart" id="c-vsex" viewBox="0 0 480 110"></svg>
+        <svg class="chart" id="c-vrace" viewBox="0 0 480 180"></svg></div>
       <div class="card" style="border-top:3px solid var(--dim)"><h3>Offenders</h3><div class="cap">18,901 identified suspects · age, sex, race</div>
-        <svg class="chart" id="c-oage" viewBox="0 0 360 150"></svg>
-        <svg class="chart" id="c-osex" viewBox="0 0 360 110"></svg>
-        <svg class="chart" id="c-orace" viewBox="0 0 360 180"></svg></div>
+        <svg class="chart" id="c-oage" viewBox="0 0 480 150"></svg>
+        <svg class="chart" id="c-osex" viewBox="0 0 480 110"></svg>
+        <svg class="chart" id="c-orace" viewBox="0 0 480 180"></svg></div>
     </div>
   </div>
 </section>
@@ -328,11 +328,8 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
   <div class="wrap reveal">
     <div class="kh">How many at once</div>
     <h2 class="sec">Most shootings hit one person — but not all</h2>
-    <div class="sub2">The data records no count of <i>shots fired</i>, so the closest measure of an incident's severity is how many people it struck. Most shootings have a single victim; a meaningful minority wound two or more, and that share has crept up.</div>
-    <div class="grid2" style="margin-top:20px">
-      <div class="card"><h3>People shot per incident</h3><div class="cap">all incidents, 2006–2026 · "5+" caps the tail</div><svg class="chart" id="c-vpi" viewBox="0 0 360 200"></svg></div>
-      <div class="card"><h3>Multi-victim share over time</h3><div class="cap">share of shootings that wounded two or more people</div><svg class="chart" id="c-multi" viewBox="0 0 360 200"></svg></div>
-    </div>
+    <div class="sub2">The data records no count of <i>shots fired</i>, so the closest measure of an incident's severity is how many people it struck. Most shootings have a single victim; a meaningful minority wound two or more.</div>
+    <figure><div class="cap" style="margin-bottom:4px">People shot per incident · all incidents, 2006–2026 · "5+" caps the tail</div><svg class="chart" id="c-vpi" viewBox="0 0 760 230"></svg></figure>
     <div class="note" id="cas-note"></div>
   </div>
 </section>
@@ -345,8 +342,8 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
     <div class="sub2">Summer, weekends and late nights — though, as the cards above showed, the late-night concentration has eased over the years.</div>
     <div class="grid2" style="margin-top:20px">
       <div class="card full"><h3>By day and hour</h3><div class="cap">share of all shootings in each weekday-hour cell — darker is more</div><svg class="chart" id="c-heat" viewBox="0 0 760 240"></svg></div>
-      <div class="card"><h3>By month</h3><div class="cap">seasonality, all years</div><svg class="chart" id="c-month" viewBox="0 0 360 200"></svg></div>
-      <div class="card"><h3>By day of week</h3><div class="cap">Monday through Sunday</div><svg class="chart" id="c-dow" viewBox="0 0 360 200"></svg></div>
+      <div class="card"><h3>By month</h3><div class="cap">seasonality, all years</div><svg class="chart" id="c-month" viewBox="0 0 480 200"></svg></div>
+      <div class="card"><h3>By day of week</h3><div class="cap">Monday through Sunday</div><svg class="chart" id="c-dow" viewBox="0 0 480 200"></svg></div>
     </div>
   </div>
 </section>
@@ -724,20 +721,18 @@ function pctSuffix(p){const s=['th','st','nd','rd'],v=p%100;return s[(v-20)%10]|
 
 /* WHO */
 function drawWho(){
-  vbars('c-vage',A.victim_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:150,rotate:true,pad:[12,8,34,36],color:()=>'var(--ox)'});
-  vbars('c-vsex',A.victim_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:110,horizontal:true,pad:[6,54,6,70],color:()=>'var(--ox)'});
-  vbars('c-vrace',A.victim_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:360,H:180,horizontal:true,pad:[6,54,6,118],color:()=>'var(--ox)'});
-  vbars('c-oage',A.offender_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:150,rotate:true,pad:[12,8,34,36],color:()=>'var(--ink2)'});
-  vbars('c-osex',A.offender_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:360,H:110,horizontal:true,pad:[6,54,6,70],color:()=>'var(--ink2)'});
-  vbars('c-orace',A.offender_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:360,H:180,horizontal:true,pad:[6,54,6,118],color:()=>'var(--ink2)'});
+  vbars('c-vage',A.victim_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:480,H:150,rotate:true,pad:[12,10,34,42],color:()=>'var(--ox)'});
+  vbars('c-vsex',A.victim_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:480,H:110,horizontal:true,pad:[6,60,6,72],color:()=>'var(--ox)'});
+  vbars('c-vrace',A.victim_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:480,H:180,horizontal:true,pad:[6,60,6,128],color:()=>'var(--ox)'});
+  vbars('c-oage',A.offender_age,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:480,H:150,rotate:true,pad:[12,10,34,42],color:()=>'var(--ink2)'});
+  vbars('c-osex',A.offender_sex,{val:d=>d.n,label:d=>d.label,fmtVal:fmt,W:480,H:110,horizontal:true,pad:[6,60,6,72],color:()=>'var(--ink2)'});
+  vbars('c-orace',A.offender_race,{val:d=>d.n,label:d=>titleCase(d.label).slice(0,16),fmtVal:fmt,W:480,H:180,horizontal:true,pad:[6,60,6,128],color:()=>'var(--ink2)'});
 }
 function drawCasualties(){
   const d=A.casualties.vpi_dist;
-  vbars('c-vpi',d,{val:x=>x.incidents,label:x=>x.victims,fmtVal:fmt,pad:[16,8,28,42],color:(x,i)=>['#8b9fb2','#5e7894','#3b5673','#1d3450','#0f2238'][i]});
-  const m=A.by_year.map(y=>({x:y.year,y:y.multi_share}));
-  lineChart('c-multi',[{color:'var(--ox)',fill:true,pts:m}],{W:360,H:200,pad:[16,10,28,40],zero:true,fmtY:v=>v.toFixed(0)+'%',partials:[2026]});
+  vbars('c-vpi',d,{val:x=>x.incidents,label:x=>x.victims,fmtVal:fmt,W:760,H:230,pad:[16,8,30,52],color:(x,i)=>['#8b9fb2','#5e7894','#3b5673','#1d3450','#0f2238'][i]});
   const tot=A.casualties.multi_total;
-  $('#cas-note').textContent=`Across two decades, ${fmt(tot)} shootings struck two or more people. The dataset publishes no count of rounds fired, so this — victims per incident — is the only available read on how much firepower an incident involved. The multi-victim share dipped through the 2010s and has risen since the pandemic.`;
+  $('#cas-note').textContent=`Across two decades, ${fmt(tot)} shootings struck two or more people. The dataset publishes no count of rounds fired, so this — victims per incident — is the only available read on how much firepower an incident involved.`;
 }
 function drawHeat(){
   const s=svg('c-heat');const W=760,H=240,padTop=8,padBot=26,padL=46,padR=14;
@@ -749,8 +744,8 @@ function drawHeat(){
   DOWn.forEach((d,i)=>txt(s,padL-8,padTop+i*cellH+cellH/2+4,d,'axis','end'));
   for(let h=0;h<24;h+=3)txt(s,padL+h*cellW+cellW/2,H-8,String(h),'axis','middle');
 }
-function drawMonth(){vbars('c-month',A.by_month,{val:d=>d.n,label:d=>d.month[0],fmtVal:fmt,color:()=>'var(--ox)'});}
-function drawDow(){vbars('c-dow',A.by_dow,{val:d=>d.n,label:d=>d.dow,fmtVal:fmt,color:d=>['Sat','Sun'].includes(d.dow)?'var(--fatal)':'var(--ox)'});}
+function drawMonth(){vbars('c-month',A.by_month,{val:d=>d.n,label:d=>d.month[0],fmtVal:fmt,W:480,color:()=>'var(--ox)'});}
+function drawDow(){vbars('c-dow',A.by_dow,{val:d=>d.n,label:d=>d.dow,fmtVal:fmt,W:480,color:d=>['Sat','Sun'].includes(d.dow)?'var(--fatal)':'var(--ox)'});}
 
 /* INTERACTIVE MAP */
 function buildMap(){
