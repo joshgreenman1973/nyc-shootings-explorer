@@ -309,7 +309,7 @@ footer{padding:30px 0 70px;color:var(--dim);font-size:13px;font-family:var(--san
   <div class="wrap reveal">
     <div class="kh">Streetlights &amp; gunfire</div>
     <h2 class="sec">Do broken streetlights track the shootings?</h2>
-    <div class="sub2">A common intuition — dark blocks breed crime — predicts that the city's worst shooting blocks should also be where streetlights stay broken. To test it, every block (a ~110-metre grid cell) was scored on two decades of shootings and on <b id="sl-total"></b> "street light out" complaints to 311 (2010–2026). <b>The two barely line up.</b> Across all shooting blocks the relationship is essentially flat (correlation <b id="sl-corr"></b>), and of the <b id="sl-nhot"></b> worst shooting blocks only <b id="sl-nboth"></b> — about <b id="sl-share"></b> — also rank among the city's most-complained-about for outages, slightly <i>below</i> what chance alone would give.</div>
+    <div class="sub2">A common intuition — dark blocks breed crime — predicts two things: that the worst shooting blocks should be where streetlights stay broken, and that shootings should cluster <i>when</i> the lights are actually out. Both are tested on a matched window — shootings and <b id="sl-total"></b> "street light out" 311 complaints over the same <b>2010–2026</b> period (311's streetlight records begin in 2010), on a ~110-metre block grid. Two ways of asking, the same answer: <b>the lights and the gunfire don't track each other.</b> Year by year, a block saw about the <b>same</b> number of shootings in years its light was reported out as in years it wasn't (a ratio of <b id="sl-ratio"></b>); <b id="sl-sameyr"></b> of shootings fell on a block with a same-year outage, against a <b id="sl-base"></b> baseline. And across blocks the overall relationship is flat (correlation <b id="sl-corr"></b>) — only <b id="sl-nboth"></b> of the <b id="sl-nhot"></b> worst shooting blocks are also chronic-outage blocks.</div>
     <div class="grid2" style="margin-top:22px">
       <div>
         <div class="cap" style="margin-bottom:4px">Each dot is a high-shooting block · outage complaints vs shootings</div>
@@ -762,10 +762,12 @@ function drawStreetlight(){
   if(!SL){return;}
   const m=SL.meta;
   $('#sl-total').textContent=fmt(m.total_outage_complaints);
-  $('#sl-corr').textContent=(m.corr_shootings_outages_across_hotspots>=0?'+':'')+m.corr_shootings_outages_across_hotspots.toFixed(2);
+  $('#sl-corr').textContent=(m.corr>=0?'+':'')+m.corr.toFixed(2);
   $('#sl-nhot').textContent=fmt(m.n_shooting_hotspot_cells);
   $('#sl-nboth').textContent=fmt(m.n_overlap);
-  $('#sl-share').textContent=m.overlap_share+'%';
+  $('#sl-ratio').textContent=m.rate_ratio.toFixed(2)+'×';
+  $('#sl-sameyr').textContent=m.share_shootings_same_year_outage+'%';
+  $('#sl-base').textContent=m.baseline_blockyear_outage_share+'%';
   // scatter
   const s=svg('c-sl');const W=480,H=360,pad=[16,16,40,46];const[pt,pr,pb,pl]=pad;const pw=W-pl-pr,ph=H-pt-pb;
   const xmax=Math.max(...SL.scatter.map(d=>d.s))*1.05, ymax=Math.max(...SL.scatter.map(d=>d.o))*1.05;
