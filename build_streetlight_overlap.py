@@ -3,8 +3,10 @@
 Cross-reference: shooting hotspots vs chronically-broken-streetlight blocks,
 on a MATCHED time window and with a contemporaneous (same-year) test.
 
-Why matched: 311 "street light out" data begins in 2010, and a light reported
-out at some random time need not be out when a shooting occurred. So:
+Why matched: geocoded 311 "street light out" data begins in 2010 (per-year 311
+files exist back to 2004, but pre-2010 files carry no lat/lon — only ZIP/borough
+— so they can't be binned to a block). And a light reported out at some random
+time need not be out when a shooting occurred. So:
   * Both layers are restricted to 2010-2026 (2006-2009 shootings excluded).
   * A block-YEAR test asks whether shootings actually happen more in the years a
     block's light was reported out — i.e. the light was likely out around then.
